@@ -24,19 +24,18 @@ columns:
     let schema: Schema = serde_yaml::from_str(schema)?;
     println!("{:#?}", schema);
 
-    let mut parsed = Vec::new();
     let re = Regex::new(&schema.regex)?;
-    for line in source.lines() {
-        if let Some(caps) = re.captures(line) {
-            let mut row = HashMap::new();
-
-            for column in &schema.columns {
-                row.insert(column, caps.name(column).map(|x| x.as_str()));
-            }
-
-            parsed.push(row);
-        }
-    }
+    let parsed: Vec<_> = source
+        .lines()
+        .filter_map(|line| re.captures(line))
+        .map(|caps| {
+            schema
+                .columns
+                .iter()
+                .map(|column| (column, caps.name(column).unwrap().as_str()))
+                .collect::<HashMap<_, _>>()
+        })
+        .collect();
 
     println!("{:#?}", parsed);
 
