@@ -1,13 +1,13 @@
-#![allow(dead_code)]
 use anyhow::Result;
 use regex::Regex;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 fn main() -> Result<()> {
     let source = "\
 1\tfirst\t42.0
 2\tsecond\t3.14
+this\tshould not match\tthe regex
 ";
 
     let schema = r"
@@ -25,6 +25,22 @@ columns:
     println!("{:#?}", schema);
 
     let re = Regex::new(&schema.regex)?;
+
+    // verify all columns exist as capture names
+    let capture_names: HashSet<_> = re.capture_names().flatten().collect();
+    let non_existent_columns: Vec<_> = schema
+        .columns
+        .iter()
+        .map(String::as_str)
+        .filter(|x| !capture_names.contains(x))
+        .collect();
+
+    assert!(
+        non_existent_columns.is_empty(),
+        "All columns must correspond to named capture groups. Columns missing capture groups: {:?}",
+        non_existent_columns
+    );
+
     let parsed: Vec<_> = source
         .lines()
         .filter_map(|line| re.captures(line))
