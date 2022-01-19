@@ -1,11 +1,13 @@
 use crate::error::Error;
-use crate::schema::Schema;
+use crate::schema::{ColumnType, Schema};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Value<'a> {
     String(&'a str),
+    Int32(i32),
 }
 
 pub struct Parser {
@@ -29,10 +31,15 @@ impl Parser {
             self.schema
                 .columns
                 .iter()
-                .map(|column| column.name.as_str())
                 .map(|column| {
-                    let value = captures.name(column).unwrap().as_str();
-                    (column, Value::String(value))
+                    let column_name = column.name.as_str();
+                    let value = captures.name(column_name).unwrap().as_str();
+                    let value = match column.r#type {
+                        ColumnType::String => Value::String(value),
+                        ColumnType::Int32 => Value::Int32(i32::from_str(value).unwrap()),
+                    };
+
+                    (column_name, value)
                 })
                 .collect::<HashMap<_, _>>()
         })
@@ -63,8 +70,7 @@ impl TryFrom<&str> for Parser {
 
     /// Create a parser from a schema YAML definition
     fn try_from(schema: &str) -> Result<Self, Self::Error> {
-        let schema: Schema = serde_yaml::from_str(schema)?;
-        println!("{:#?}", schema);
+        let schema = Schema::try_from(schema)?;
         Parser::new(schema)
     }
 }
@@ -131,7 +137,7 @@ mod tests {
             columns: vec![
                 Column {
                     name: "index".to_string(),
-                    r#type: ColumnType::String,
+                    r#type: ColumnType::Int32,
                 },
                 Column {
                     name: "string_value".to_string(),
@@ -147,7 +153,7 @@ mod tests {
         let line = "1234\tthis is some string\t3.14159";
         let parser = Parser::new(schema).unwrap();
         let map = parser.parse_line(line).unwrap();
-        assert_eq!(Value::String("1234"), map["index"]);
+        assert_eq!(Value::Int32(1234), map["index"]);
         assert_eq!(Value::String("this is some string"), map["string_value"]);
         assert_eq!(Value::String("3.14159"), map["double_value"]);
     }
