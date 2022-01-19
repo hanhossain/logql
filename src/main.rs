@@ -2,7 +2,6 @@ mod error;
 mod parser;
 
 use crate::parser::Parser;
-use std::collections::HashMap;
 
 fn main() -> anyhow::Result<()> {
     let source = "\
@@ -17,22 +16,12 @@ columns:
     - index
     - string_value
     - double_value
-    - something
 ";
 
     let parser = Parser::try_from(schema)?;
-
     let parsed: Vec<_> = source
         .lines()
-        .filter_map(|line| parser.regex.captures(line))
-        .map(|caps| {
-            parser
-                .schema
-                .columns
-                .iter()
-                .map(|column| (column, caps.name(column).unwrap().as_str()))
-                .collect::<HashMap<_, _>>()
-        })
+        .filter_map(|line| parser.parse_line(line))
         .collect();
 
     println!("{:#?}", parsed);

@@ -1,7 +1,7 @@
 use crate::error::Error;
 use regex::Regex;
 use serde::Deserialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Deserialize)]
 pub struct Schema {
@@ -22,6 +22,17 @@ impl Parser {
 
         parser.verify_columns_exist()?;
         Ok(parser)
+    }
+
+    /// Parse the capture groups into columns
+    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<HashMap<&'a str, &'a str>> {
+        self.regex.captures(line).map(|captures| {
+            self.schema
+                .columns
+                .iter()
+                .map(|column| (column.as_str(), captures.name(column).unwrap().as_str()))
+                .collect::<HashMap<_, _>>()
+        })
     }
 
     /// Verify all columns exist as capture groups
@@ -85,5 +96,41 @@ mod tests {
         };
 
         assert!(Parser::new(schema).is_err());
+    }
+
+    #[test]
+    fn parse_into_columns() {
+        let schema = Schema {
+            regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            columns: vec![
+                "index".to_string(),
+                "string_value".to_string(),
+                "double_value".to_string(),
+            ],
+        };
+
+        let line = "1234\tthis is some string\t3.14159";
+        let parser = Parser::new(schema).unwrap();
+        let map = parser.parse_line(line).unwrap();
+        assert_eq!("1234", map["index"]);
+        assert_eq!("this is some string", map["string_value"]);
+        assert_eq!("3.14159", map["double_value"]);
+    }
+
+    #[test]
+    fn parse_into_columns_no_match() {
+        let schema = Schema {
+            regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            columns: vec![
+                "index".to_string(),
+                "string_value".to_string(),
+                "double_value".to_string(),
+            ],
+        };
+
+        let line = "1234\t3.14159";
+        let parser = Parser::new(schema).unwrap();
+        let map = parser.parse_line(line);
+        assert_eq!(None, map);
     }
 }
