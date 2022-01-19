@@ -1,12 +1,11 @@
 use crate::error::Error;
+use crate::schema::Schema;
 use regex::Regex;
-use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Deserialize)]
-pub struct Schema {
-    pub regex: String,
-    pub columns: Vec<String>,
+#[derive(Debug, Eq, PartialEq)]
+pub enum Value<'a> {
+    String(&'a str),
 }
 
 pub struct Parser {
@@ -25,12 +24,16 @@ impl Parser {
     }
 
     /// Parse the capture groups into columns
-    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<HashMap<&'a str, &'a str>> {
+    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<HashMap<&'a str, Value>> {
         self.regex.captures(line).map(|captures| {
             self.schema
                 .columns
                 .iter()
-                .map(|column| (column.as_str(), captures.name(column).unwrap().as_str()))
+                .map(|column| column.name.as_str())
+                .map(|column| {
+                    let value = captures.name(column).unwrap().as_str();
+                    (column, Value::String(value))
+                })
                 .collect::<HashMap<_, _>>()
         })
     }
@@ -42,7 +45,7 @@ impl Parser {
             .schema
             .columns
             .iter()
-            .map(String::as_str)
+            .map(|column| column.name.as_str())
             .filter(|x| !capture_names.contains(x))
             .map(str::to_string)
             .collect();
@@ -61,6 +64,7 @@ impl TryFrom<&str> for Parser {
     /// Create a parser from a schema YAML definition
     fn try_from(schema: &str) -> Result<Self, Self::Error> {
         let schema: Schema = serde_yaml::from_str(schema)?;
+        println!("{:#?}", schema);
         Parser::new(schema)
     }
 }
@@ -68,15 +72,25 @@ impl TryFrom<&str> for Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::{Column, ColumnType};
 
     #[test]
     fn create_parser() {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                "index".to_string(),
-                "string_value".to_string(),
-                "double_value".to_string(),
+                Column {
+                    name: "index".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "string_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "double_value".to_string(),
+                    r#type: ColumnType::String,
+                },
             ],
         };
 
@@ -88,10 +102,22 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                "index".to_string(),
-                "string_value".to_string(),
-                "double_value".to_string(),
-                "unknown".to_string(),
+                Column {
+                    name: "index".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "string_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "double_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "unknown".to_string(),
+                    r#type: ColumnType::String,
+                },
             ],
         };
 
@@ -103,18 +129,27 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                "index".to_string(),
-                "string_value".to_string(),
-                "double_value".to_string(),
+                Column {
+                    name: "index".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "string_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "double_value".to_string(),
+                    r#type: ColumnType::String,
+                },
             ],
         };
 
         let line = "1234\tthis is some string\t3.14159";
         let parser = Parser::new(schema).unwrap();
         let map = parser.parse_line(line).unwrap();
-        assert_eq!("1234", map["index"]);
-        assert_eq!("this is some string", map["string_value"]);
-        assert_eq!("3.14159", map["double_value"]);
+        assert_eq!(Value::String("1234"), map["index"]);
+        assert_eq!(Value::String("this is some string"), map["string_value"]);
+        assert_eq!(Value::String("3.14159"), map["double_value"]);
     }
 
     #[test]
@@ -122,9 +157,18 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                "index".to_string(),
-                "string_value".to_string(),
-                "double_value".to_string(),
+                Column {
+                    name: "index".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "string_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "double_value".to_string(),
+                    r#type: ColumnType::String,
+                },
             ],
         };
 

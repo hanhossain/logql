@@ -1,5 +1,6 @@
 mod error;
 mod parser;
+mod schema;
 
 use crate::parser::Parser;
 
@@ -13,9 +14,12 @@ this\tshould not match\tthe regex
     let schema = r"
 regex: (?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)
 columns:
-    - index
-    - string_value
-    - double_value
+    - name: index
+      type: string
+    - name: string_value
+      type: string
+    - name: double_value
+      type: string
 ";
 
     let parser = Parser::try_from(schema)?;
