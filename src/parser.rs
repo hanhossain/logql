@@ -47,10 +47,10 @@ impl Parser {
             .map(str::to_string)
             .collect();
 
-        if !non_existent_columns.is_empty() {
-            Err(Error::MissingColumns(non_existent_columns))
-        } else {
+        if non_existent_columns.is_empty() {
             Ok(())
+        } else {
+            Err(Error::MissingColumns(non_existent_columns))
         }
     }
 }
