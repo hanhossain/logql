@@ -61,6 +61,7 @@ pub struct Column {
     pub multiline: bool,
 }
 
+#[cfg(test)]
 impl Column {
     /// Creates a column definition
     pub fn new(name: impl Into<String>, column_type: ColumnType) -> Column {
