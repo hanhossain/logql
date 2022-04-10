@@ -6,6 +6,7 @@ pub enum Type<'a> {
     Int32(i32),
     Int64(i64),
     Bool(bool),
+    Float(f32),
     Double(f64),
 }
 
@@ -16,6 +17,7 @@ impl<'a> ToString for Type<'a> {
             Type::Int32(x) => x.to_string(),
             Type::Int64(x) => x.to_string(),
             Type::Bool(x) => x.to_string(),
+            Type::Float(x) => x.to_string(),
             Type::Double(x) => x.to_string(),
         }
     }

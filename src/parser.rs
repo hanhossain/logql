@@ -70,6 +70,7 @@ impl Parser {
                         ColumnType::Int32 => Type::Int32(i32::from_str(value).unwrap()),
                         ColumnType::Int64 => Type::Int64(i64::from_str(value).unwrap()),
                         ColumnType::Bool => Type::Bool(bool::from_str(value).unwrap()),
+                        ColumnType::Float => Type::Float(f32::from_str(value).unwrap()),
                         ColumnType::Double => Type::Double(f64::from_str(value).unwrap()),
                     };
 
@@ -155,7 +156,8 @@ mod tests {
             (?P<string_value>.+)\\t\
             (?P<double_value>\\d+\\.\\d+)\\t\
             (?P<long_value>\\d+)\\t\
-            (?P<bool_value>.+)"
+            (?P<bool_value>.+)\\t\
+            (?P<float_value>\\d+\\.\\d+)"
                 .to_string(),
             columns: vec![
                 Column::new("int_value", ColumnType::Int32),
@@ -163,6 +165,7 @@ mod tests {
                 Column::new("double_value", ColumnType::Double),
                 Column::new("long_value", ColumnType::Int64),
                 Column::new("bool_value", ColumnType::Bool),
+                Column::new("float_value", ColumnType::Float),
             ],
         };
 
@@ -171,10 +174,11 @@ mod tests {
         let double_value = 3.14;
         let long_value = i64::MAX;
         let bool_value = true;
+        let float_value = 1.23;
 
         let line = format!(
-            "{}\t{}\t{}\t{}\t{}",
-            int_value, string_value, double_value, long_value, bool_value
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            int_value, string_value, double_value, long_value, bool_value, float_value
         );
         let parser = Parser::new(schema).unwrap();
         let parsed_value = parser.parse_line(&line).unwrap();
@@ -185,6 +189,7 @@ mod tests {
         expected_values.insert("double_value", Type::Double(double_value));
         expected_values.insert("long_value", Type::Int64(long_value));
         expected_values.insert("bool_value", Type::Bool(bool_value));
+        expected_values.insert("float_value", Type::Float(float_value));
 
         let expected = Value {
             values: expected_values,

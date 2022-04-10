@@ -32,7 +32,7 @@ columns:
       type: string
       multiline: true
     - name: double_value
-      type: string
+      type: f64
 ";
 
     let parser = Parser::try_from(schema)?;

@@ -92,6 +92,8 @@ pub enum ColumnType {
     Int64,
     #[serde(alias = "bool")]
     Bool,
+    #[serde(alias = "f32")]
+    Float,
     #[serde(alias = "f64")]
     Double,
 }
@@ -103,6 +105,7 @@ impl Display for ColumnType {
             ColumnType::Int32 => "i32",
             ColumnType::Int64 => "i64",
             ColumnType::Bool => "bool",
+            ColumnType::Float => "f32",
             ColumnType::Double => "f64",
         };
         f.write_str(&value)
@@ -125,6 +128,8 @@ columns:
       type: i32
     - name: i64
       type: i64
+    - name: f32
+      type: f32
     - name: f64
       type: f64
 ";
@@ -135,6 +140,7 @@ columns:
                 Column::multiline_string("string"),
                 Column::new("i32", ColumnType::Int32),
                 Column::new("i64", ColumnType::Int64),
+                Column::new("f32", ColumnType::Float),
                 Column::new("f64", ColumnType::Double),
             ],
         };
@@ -147,6 +153,7 @@ columns:
         let cases = [
             ("i32", ColumnType::Int32),
             ("i64", ColumnType::Int64),
+            ("f32", ColumnType::Float),
             ("f64", ColumnType::Double),
         ];
 
