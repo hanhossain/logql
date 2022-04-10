@@ -40,13 +40,12 @@ columns:
     let parsed = parser.parse(source.lines());
 
     let mut table = Table::new();
-    let mut header: Vec<_> = parser
+    let header: Vec<_> = parser
         .schema
         .columns
         .iter()
         .map(|c| c.name.to_owned())
         .collect();
-    header.push(String::from("extraText"));
     table
         .load_preset(presets::UTF8_FULL)
         .set_content_arrangement(ContentArrangement::DynamicFullWidth)
@@ -66,12 +65,11 @@ columns:
             })
             .collect();
         if let Some(extra_text) = row.extra_text {
-            let mut combined_text = String::new();
             for text in extra_text {
-                combined_text.push_str(text);
-                combined_text.push('\n');
+                let multiline_column = &mut result[parser.multiline_index.unwrap()];
+                multiline_column.push('\n');
+                multiline_column.push_str(text);
             }
-            result.push(combined_text);
         }
         table.add_row(result);
     }

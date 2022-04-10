@@ -10,19 +10,25 @@ use std::str::{FromStr, Lines};
 pub struct Parser {
     pub schema: Schema,
     pub regex: Regex,
-    multiline: bool,
+    pub multiline_index: Option<usize>,
 }
 
 impl Parser {
     /// Create a parser from a schema
     pub fn new(schema: Schema) -> Result<Parser, Error> {
         let regex = Regex::new(&schema.regex)?;
-        let multiline = schema.columns.iter().any(|c| c.multiline);
+        let multiline_column = schema
+            .columns
+            .iter()
+            .enumerate()
+            .filter(|(_, col)| col.multiline)
+            .map(|(idx, _)| idx)
+            .next();
 
         let parser = Parser {
             schema,
             regex,
-            multiline,
+            multiline_index: multiline_column,
         };
 
         parser.verify_columns_exist()?;
@@ -35,7 +41,7 @@ impl Parser {
         for line in lines {
             if let Some(matched_result) = self.parse_line(line) {
                 parsed.push(matched_result);
-            } else if self.multiline {
+            } else if self.multiline_index.is_some() {
                 // attempt to get extra lines only if multiline is enabled
                 if let Some(last) = parsed.last_mut() {
                     match last.extra_text.as_mut() {
