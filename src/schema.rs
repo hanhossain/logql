@@ -9,14 +9,33 @@ pub struct Schema {
 }
 
 impl Schema {
-    /// Ensures only strings can be multiline enabled
+    /// Ensures
+    /// - only strings can be multiline enabled
+    /// - only one multiline column allowed
     fn validate(&self) -> Result<(), Error> {
+        let mut multiline_enabled = false;
+
         for column in &self.columns {
             if column.multiline && column.r#type != ColumnType::String {
-                return Err(Error::InvalidMultilineSchema(
+                return Err(Error::InvalidMultilineType(
                     column.name.clone(),
                     column.r#type,
                 ));
+            }
+
+            if column.multiline {
+                if multiline_enabled {
+                    // found more than one multiline column
+                    let columns = self
+                        .columns
+                        .iter()
+                        .filter(|col| col.multiline)
+                        .map(|col| col.name.clone())
+                        .collect();
+                    return Err(Error::TooManyMultilineColumns(columns));
+                } else {
+                    multiline_enabled = true;
+                }
             }
         }
 
@@ -131,15 +150,42 @@ columns:
 
             let schema = Schema::try_from(raw.as_str());
             assert!(schema.is_err());
-            if let Err(Error::InvalidMultilineSchema(name, r#type)) = schema {
+            if let Err(Error::InvalidMultilineType(name, r#type)) = schema {
                 assert_eq!(case.0.to_owned(), name);
                 assert_eq!(case.1, r#type);
             } else {
                 panic!(
-                    "Error should be Error::InvalidMultilineSchema. Actual error: {:?}",
+                    "Error should be Error::InvalidMultilineType. Actual error: {:?}",
                     schema.unwrap_err()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn parse_invalid_multiple_multiline() {
+        let raw = "
+regex: '*'
+columns:
+    - name: string1
+      type: string
+      multiline: true
+    - name: string2
+      type: string
+      multiline: true
+";
+        let schema = Schema::try_from(raw);
+        assert!(schema.is_err());
+        if let Err(Error::TooManyMultilineColumns(columns)) = schema {
+            assert_eq!(
+                columns,
+                vec![String::from("string1"), String::from("string2")]
+            );
+        } else {
+            panic!(
+                "Error should be Error::TooManyMultilineColumns. Actual error: {:?}",
+                schema.unwrap_err()
+            );
         }
     }
 }
