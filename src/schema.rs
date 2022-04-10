@@ -1,5 +1,5 @@
 use crate::error::Error;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -81,7 +81,7 @@ impl Column {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Copy, Clone)]
 pub enum ColumnType {
     #[serde(alias = "string")]
     String,
@@ -95,7 +95,12 @@ pub enum ColumnType {
 
 impl Display for ColumnType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let value = serde_yaml::to_string(self).unwrap();
+        let value = match self {
+            ColumnType::String => "string",
+            ColumnType::Int32 => "i32",
+            ColumnType::Int64 => "i64",
+            ColumnType::Bool => "bool",
+        };
         f.write_str(&value)
     }
 }
