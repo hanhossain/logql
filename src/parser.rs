@@ -1,14 +1,11 @@
+pub mod values;
+
 use crate::error::Error;
+use crate::parser::values::{Type, Value};
 use crate::schema::{ColumnType, Schema};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum Value<'a> {
-    String(&'a str),
-    Int32(i32),
-}
 
 pub struct Parser {
     pub schema: Schema,
@@ -26,22 +23,28 @@ impl Parser {
     }
 
     /// Parse the capture groups into columns
-    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<HashMap<&'a str, Value>> {
+    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<Value<'a>> {
         self.regex.captures(line).map(|captures| {
-            self.schema
+            let values = self
+                .schema
                 .columns
                 .iter()
                 .map(|column| {
                     let column_name = column.name.as_str();
                     let value = captures.name(column_name).unwrap().as_str();
                     let value = match column.r#type {
-                        ColumnType::String => Value::String(value),
-                        ColumnType::Int32 => Value::Int32(i32::from_str(value).unwrap()),
+                        ColumnType::String => Type::String(value),
+                        ColumnType::Int32 => Type::Int32(i32::from_str(value).unwrap()),
                     };
 
                     (column_name, value)
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<HashMap<_, _>>();
+
+            Value {
+                values,
+                extra_text: None,
+            }
         })
     }
 
@@ -152,10 +155,19 @@ mod tests {
 
         let line = "1234\tthis is some string\t3.14159";
         let parser = Parser::new(schema).unwrap();
-        let map = parser.parse_line(line).unwrap();
-        assert_eq!(Value::Int32(1234), map["index"]);
-        assert_eq!(Value::String("this is some string"), map["string_value"]);
-        assert_eq!(Value::String("3.14159"), map["double_value"]);
+        let parsed_value = parser.parse_line(line).unwrap();
+
+        let mut expected_values = HashMap::new();
+        expected_values.insert("index", Type::Int32(1234));
+        expected_values.insert("string_value", Type::String("this is some string"));
+        expected_values.insert("double_value", Type::String("3.14159"));
+
+        let expected = Value {
+            values: expected_values,
+            extra_text: None,
+        };
+
+        assert_eq!(expected, parsed_value);
     }
 
     #[test]
