@@ -28,17 +28,7 @@ columns:
 ";
 
     let parser = Parser::try_from(schema)?;
-    let mut parsed = Vec::new();
-    for line in source.lines() {
-        if let Some(matched_result) = parser.parse_line(line) {
-            parsed.push(matched_result);
-        } else if let Some(last) = parsed.last_mut() {
-            match last.extra_text.as_mut() {
-                None => last.extra_text = Some(vec![line]),
-                Some(extra_text) => extra_text.push(line),
-            }
-        }
-    }
+    let parsed = parser.parse(source.lines());
 
     println!("{:#?}", parsed);
 

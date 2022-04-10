@@ -5,7 +5,7 @@ use crate::parser::values::{Type, Value};
 use crate::schema::{ColumnType, Schema};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
+use std::str::{FromStr, Lines};
 
 pub struct Parser {
     pub schema: Schema,
@@ -20,6 +20,23 @@ impl Parser {
 
         parser.verify_columns_exist()?;
         Ok(parser)
+    }
+
+    /// Parse all lines
+    pub fn parse<'a>(&'a self, lines: Lines<'a>) -> Vec<Value> {
+        let mut parsed = Vec::new();
+        for line in lines {
+            if let Some(matched_result) = self.parse_line(line) {
+                parsed.push(matched_result);
+            } else if let Some(last) = parsed.last_mut() {
+                match last.extra_text.as_mut() {
+                    None => last.extra_text = Some(vec![line]),
+                    Some(extra_text) => extra_text.push(line),
+                }
+            }
+        }
+
+        parsed
     }
 
     /// Parse the capture groups into columns
@@ -194,5 +211,42 @@ mod tests {
         let parser = Parser::new(schema).unwrap();
         let map = parser.parse_line(line);
         assert_eq!(None, map);
+    }
+
+    #[test]
+    fn parse_lines_with_extra_text() {
+        let schema = Schema {
+            regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            columns: vec![
+                Column {
+                    name: "index".to_string(),
+                    r#type: ColumnType::Int32,
+                },
+                Column {
+                    name: "string_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+                Column {
+                    name: "double_value".to_string(),
+                    r#type: ColumnType::String,
+                },
+            ],
+        };
+
+        let line = "1234\tthis is some string\t3.14159\nthis is extra text";
+        let parser = Parser::new(schema).unwrap();
+        let parsed_result = parser.parse(line.lines());
+
+        let mut expected_values = HashMap::new();
+        expected_values.insert("index", Type::Int32(1234));
+        expected_values.insert("string_value", Type::String("this is some string"));
+        expected_values.insert("double_value", Type::String("3.14159"));
+
+        let expected = vec![Value {
+            values: expected_values,
+            extra_text: Some(vec!["this is extra text"]),
+        }];
+
+        assert_eq!(expected, parsed_result);
     }
 }
