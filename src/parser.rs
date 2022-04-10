@@ -52,6 +52,7 @@ impl Parser {
                     let value = match column.r#type {
                         ColumnType::String => Type::String(value),
                         ColumnType::Int32 => Type::Int32(i32::from_str(value).unwrap()),
+                        ColumnType::Int64 => Type::Int64(i64::from_str(value).unwrap()),
                     };
 
                     (column_name, value)
@@ -153,10 +154,11 @@ mod tests {
     #[test]
     fn parse_into_columns() {
         let schema = Schema {
-            regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            regex: r"(?P<int_value>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)\t(?P<long_value>\d+)"
+                .to_string(),
             columns: vec![
                 Column {
-                    name: "index".to_string(),
+                    name: "int_value".to_string(),
                     r#type: ColumnType::Int32,
                 },
                 Column {
@@ -167,17 +169,22 @@ mod tests {
                     name: "double_value".to_string(),
                     r#type: ColumnType::String,
                 },
+                Column {
+                    name: "long_value".to_string(),
+                    r#type: ColumnType::Int64,
+                }
             ],
         };
 
-        let line = "1234\tthis is some string\t3.14159";
+        let line = format!("1234\tthis is some string\t3.14159\t{}", i64::MAX);
         let parser = Parser::new(schema).unwrap();
-        let parsed_value = parser.parse_line(line).unwrap();
+        let parsed_value = parser.parse_line(&line).unwrap();
 
         let mut expected_values = HashMap::new();
-        expected_values.insert("index", Type::Int32(1234));
+        expected_values.insert("int_value", Type::Int32(1234));
         expected_values.insert("string_value", Type::String("this is some string"));
         expected_values.insert("double_value", Type::String("3.14159"));
+        expected_values.insert("long_value", Type::Int64(i64::MAX));
 
         let expected = Value {
             values: expected_values,

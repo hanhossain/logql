@@ -4,6 +4,7 @@ use std::collections::HashMap;
 pub enum Type<'a> {
     String(&'a str),
     Int32(i32),
+    Int64(i64),
 }
 
 #[derive(Debug, Eq, PartialEq)]

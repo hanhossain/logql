@@ -20,7 +20,7 @@ another extra line
 regex: (?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)
 columns:
     - name: index
-      type: string
+      type: i32
     - name: string_value
       type: string
     - name: double_value

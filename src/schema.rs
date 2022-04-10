@@ -28,6 +28,8 @@ pub enum ColumnType {
     String,
     #[serde(alias = "i32")]
     Int32,
+    #[serde(alias = "i64")]
+    Int64,
 }
 
 #[cfg(test)]
@@ -43,6 +45,8 @@ columns:
       type: string
     - name: i32
       type: i32
+    - name: i64
+      type: i64
 ";
         let schema = Schema::try_from(raw).unwrap();
         let expected = Schema {
@@ -55,6 +59,10 @@ columns:
                 Column {
                     name: "i32".to_string(),
                     r#type: ColumnType::Int32,
+                },
+                Column {
+                    name: "i64".to_string(),
+                    r#type: ColumnType::Int64,
                 },
             ],
         };
