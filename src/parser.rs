@@ -107,18 +107,9 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                Column {
-                    name: "index".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "string_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "double_value".to_string(),
-                    r#type: ColumnType::String,
-                },
+                Column::new("index", ColumnType::String),
+                Column::new("string_value", ColumnType::String),
+                Column::new("double_value", ColumnType::String),
             ],
         };
 
@@ -130,22 +121,10 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                Column {
-                    name: "index".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "string_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "double_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "unknown".to_string(),
-                    r#type: ColumnType::String,
-                },
+                Column::new("index", ColumnType::String),
+                Column::new("string_value", ColumnType::String),
+                Column::new("double_value", ColumnType::String),
+                Column::new("unknown", ColumnType::String),
             ],
         };
 
@@ -162,26 +141,11 @@ mod tests {
             (?P<bool_value>.+)"
                 .to_string(),
             columns: vec![
-                Column {
-                    name: "int_value".to_string(),
-                    r#type: ColumnType::Int32,
-                },
-                Column {
-                    name: "string_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "double_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "long_value".to_string(),
-                    r#type: ColumnType::Int64,
-                },
-                Column {
-                    name: "bool_value".to_string(),
-                    r#type: ColumnType::Bool,
-                },
+                Column::new("int_value", ColumnType::Int32),
+                Column::new("string_value", ColumnType::String),
+                Column::new("double_value", ColumnType::String),
+                Column::new("long_value", ColumnType::Int64),
+                Column::new("bool_value", ColumnType::Bool),
             ],
         };
 
@@ -218,18 +182,9 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                Column {
-                    name: "index".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "string_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "double_value".to_string(),
-                    r#type: ColumnType::String,
-                },
+                Column::new("index", ColumnType::String),
+                Column::new("string_value", ColumnType::String),
+                Column::new("double_value", ColumnType::String),
             ],
         };
 
@@ -244,18 +199,9 @@ mod tests {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
             columns: vec![
-                Column {
-                    name: "index".to_string(),
-                    r#type: ColumnType::Int32,
-                },
-                Column {
-                    name: "string_value".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "double_value".to_string(),
-                    r#type: ColumnType::String,
-                },
+                Column::new("index", ColumnType::Int32),
+                Column::new("string_value", ColumnType::String),
+                Column::new("double_value", ColumnType::String),
             ],
         };
 

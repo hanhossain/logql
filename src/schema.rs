@@ -20,6 +20,28 @@ impl TryFrom<&str> for Schema {
 pub struct Column {
     pub name: String,
     pub r#type: ColumnType,
+    #[serde(default)]
+    pub multiline: bool,
+}
+
+impl Column {
+    /// Creates a column definition
+    pub fn new(name: impl Into<String>, column_type: ColumnType) -> Column {
+        Column {
+            name: name.into(),
+            r#type: column_type,
+            multiline: false,
+        }
+    }
+
+    /// Creates a multiline string column definition
+    pub fn multiline_string(name: impl Into<String>) -> Column {
+        Column {
+            name: name.into(),
+            r#type: ColumnType::String,
+            multiline: true,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -45,6 +67,7 @@ regex: '*'
 columns:
     - name: string
       type: string
+      multiline: true
     - name: i32
       type: i32
     - name: i64
@@ -54,18 +77,9 @@ columns:
         let expected = Schema {
             regex: "*".to_string(),
             columns: vec![
-                Column {
-                    name: "string".to_string(),
-                    r#type: ColumnType::String,
-                },
-                Column {
-                    name: "i32".to_string(),
-                    r#type: ColumnType::Int32,
-                },
-                Column {
-                    name: "i64".to_string(),
-                    r#type: ColumnType::Int64,
-                },
+                Column::multiline_string("string"),
+                Column::new("i32", ColumnType::Int32),
+                Column::new("i64", ColumnType::Int64),
             ],
         };
 
