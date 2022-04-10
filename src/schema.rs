@@ -1,5 +1,6 @@
 use crate::error::Error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 pub struct Schema {
@@ -7,11 +8,28 @@ pub struct Schema {
     pub columns: Vec<Column>,
 }
 
+impl Schema {
+    /// Ensures only strings can be multiline enabled
+    fn validate(&self) -> Result<(), Error> {
+        for column in &self.columns {
+            if column.multiline && column.r#type != ColumnType::String {
+                return Err(Error::InvalidMultilineSchema(
+                    column.name.clone(),
+                    column.r#type,
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl TryFrom<&str> for Schema {
     type Error = Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let schema: Schema = serde_yaml::from_str(value)?;
+        schema.validate()?;
         Ok(schema)
     }
 }
@@ -44,7 +62,7 @@ impl Column {
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq, Copy, Clone)]
 pub enum ColumnType {
     #[serde(alias = "string")]
     String,
@@ -54,6 +72,13 @@ pub enum ColumnType {
     Int64,
     #[serde(alias = "bool")]
     Bool,
+}
+
+impl Display for ColumnType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let value = serde_yaml::to_string(self).unwrap();
+        f.write_str(&value)
+    }
 }
 
 #[cfg(test)]
@@ -84,5 +109,37 @@ columns:
         };
 
         assert_eq!(expected, schema);
+    }
+
+    #[test]
+    fn parse_invalid_multiline() {
+        let cases = [("i32", ColumnType::Int32), ("i64", ColumnType::Int64)];
+
+        for case in cases {
+            let raw = format!(
+                "
+regex: '*'
+columns:
+    - name: string
+      type: string
+    - name: {}
+      type: {}
+      multiline: true
+",
+                case.0, case.0
+            );
+
+            let schema = Schema::try_from(raw.as_str());
+            assert!(schema.is_err());
+            if let Err(Error::InvalidMultilineSchema(name, r#type)) = schema {
+                assert_eq!(case.0.to_owned(), name);
+                assert_eq!(case.1, r#type);
+            } else {
+                panic!(
+                    "Error should be Error::InvalidMultilineSchema. Actual error: {:?}",
+                    schema.unwrap_err()
+                );
+            }
+        }
     }
 }
