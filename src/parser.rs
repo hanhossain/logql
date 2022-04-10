@@ -70,6 +70,7 @@ impl Parser {
                         ColumnType::Int32 => Type::Int32(i32::from_str(value).unwrap()),
                         ColumnType::Int64 => Type::Int64(i64::from_str(value).unwrap()),
                         ColumnType::Bool => Type::Bool(bool::from_str(value).unwrap()),
+                        ColumnType::Double => Type::Double(f64::from_str(value).unwrap()),
                     };
 
                     (column_name, value)
@@ -159,7 +160,7 @@ mod tests {
             columns: vec![
                 Column::new("int_value", ColumnType::Int32),
                 Column::new("string_value", ColumnType::String),
-                Column::new("double_value", ColumnType::String),
+                Column::new("double_value", ColumnType::Double),
                 Column::new("long_value", ColumnType::Int64),
                 Column::new("bool_value", ColumnType::Bool),
             ],
@@ -167,7 +168,7 @@ mod tests {
 
         let int_value = 1234;
         let string_value = "this is some string";
-        let double_value = "3.14159";
+        let double_value = 3.14;
         let long_value = i64::MAX;
         let bool_value = true;
 
@@ -181,7 +182,7 @@ mod tests {
         let mut expected_values = HashMap::new();
         expected_values.insert("int_value", Type::Int32(int_value));
         expected_values.insert("string_value", Type::String(string_value));
-        expected_values.insert("double_value", Type::String(double_value));
+        expected_values.insert("double_value", Type::Double(double_value));
         expected_values.insert("long_value", Type::Int64(long_value));
         expected_values.insert("bool_value", Type::Bool(bool_value));
 

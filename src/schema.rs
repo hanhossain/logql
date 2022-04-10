@@ -92,6 +92,8 @@ pub enum ColumnType {
     Int64,
     #[serde(alias = "bool")]
     Bool,
+    #[serde(alias = "f64")]
+    Double,
 }
 
 impl Display for ColumnType {
@@ -101,6 +103,7 @@ impl Display for ColumnType {
             ColumnType::Int32 => "i32",
             ColumnType::Int64 => "i64",
             ColumnType::Bool => "bool",
+            ColumnType::Double => "f64",
         };
         f.write_str(&value)
     }
@@ -122,6 +125,8 @@ columns:
       type: i32
     - name: i64
       type: i64
+    - name: f64
+      type: f64
 ";
         let schema = Schema::try_from(raw).unwrap();
         let expected = Schema {
@@ -130,6 +135,7 @@ columns:
                 Column::multiline_string("string"),
                 Column::new("i32", ColumnType::Int32),
                 Column::new("i64", ColumnType::Int64),
+                Column::new("f64", ColumnType::Double),
             ],
         };
 
@@ -138,7 +144,11 @@ columns:
 
     #[test]
     fn parse_invalid_multiline() {
-        let cases = [("i32", ColumnType::Int32), ("i64", ColumnType::Int64)];
+        let cases = [
+            ("i32", ColumnType::Int32),
+            ("i64", ColumnType::Int64),
+            ("f64", ColumnType::Double),
+        ];
 
         for case in cases {
             let raw = format!(

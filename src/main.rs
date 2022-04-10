@@ -62,6 +62,7 @@ columns:
                 Type::Int32(x) => x.to_string(),
                 Type::Int64(x) => x.to_string(),
                 Type::Bool(x) => x.to_string(),
+                Type::Double(x) => x.to_string(),
             })
             .collect();
         if let Some(extra_text) = row.extra_text {
