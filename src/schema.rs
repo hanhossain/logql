@@ -72,7 +72,7 @@ impl Column {
         }
     }
 
-    /// Creates a multiline string column definition
+    /// Creates a multiline string definition
     pub fn multiline_string(name: impl Into<String>) -> Column {
         Column {
             name: name.into(),
