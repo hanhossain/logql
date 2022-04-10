@@ -53,6 +53,7 @@ impl Parser {
                         ColumnType::String => Type::String(value),
                         ColumnType::Int32 => Type::Int32(i32::from_str(value).unwrap()),
                         ColumnType::Int64 => Type::Int64(i64::from_str(value).unwrap()),
+                        ColumnType::Bool => Type::Bool(bool::from_str(value).unwrap()),
                     };
 
                     (column_name, value)
@@ -154,7 +155,11 @@ mod tests {
     #[test]
     fn parse_into_columns() {
         let schema = Schema {
-            regex: r"(?P<int_value>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)\t(?P<long_value>\d+)"
+            regex: "(?P<int_value>\\d+)\\t\
+            (?P<string_value>.+)\\t\
+            (?P<double_value>\\d+\\.\\d+)\\t\
+            (?P<long_value>\\d+)\\t\
+            (?P<bool_value>.+)"
                 .to_string(),
             columns: vec![
                 Column {
@@ -172,19 +177,33 @@ mod tests {
                 Column {
                     name: "long_value".to_string(),
                     r#type: ColumnType::Int64,
-                }
+                },
+                Column {
+                    name: "bool_value".to_string(),
+                    r#type: ColumnType::Bool,
+                },
             ],
         };
 
-        let line = format!("1234\tthis is some string\t3.14159\t{}", i64::MAX);
+        let int_value = 1234;
+        let string_value = "this is some string";
+        let double_value = "3.14159";
+        let long_value = i64::MAX;
+        let bool_value = true;
+
+        let line = format!(
+            "{}\t{}\t{}\t{}\t{}",
+            int_value, string_value, double_value, long_value, bool_value
+        );
         let parser = Parser::new(schema).unwrap();
         let parsed_value = parser.parse_line(&line).unwrap();
 
         let mut expected_values = HashMap::new();
-        expected_values.insert("int_value", Type::Int32(1234));
-        expected_values.insert("string_value", Type::String("this is some string"));
-        expected_values.insert("double_value", Type::String("3.14159"));
-        expected_values.insert("long_value", Type::Int64(i64::MAX));
+        expected_values.insert("int_value", Type::Int32(int_value));
+        expected_values.insert("string_value", Type::String(string_value));
+        expected_values.insert("double_value", Type::String(double_value));
+        expected_values.insert("long_value", Type::Int64(long_value));
+        expected_values.insert("bool_value", Type::Bool(bool_value));
 
         let expected = Value {
             values: expected_values,

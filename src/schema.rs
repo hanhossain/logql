@@ -30,6 +30,8 @@ pub enum ColumnType {
     Int32,
     #[serde(alias = "i64")]
     Int64,
+    #[serde(alias = "bool")]
+    Bool,
 }
 
 #[cfg(test)]

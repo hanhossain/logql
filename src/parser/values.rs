@@ -5,6 +5,7 @@ pub enum Type<'a> {
     String(&'a str),
     Int32(i32),
     Int64(i64),
+    Bool(bool),
 }
 
 #[derive(Debug, Eq, PartialEq)]
