@@ -1,4 +1,3 @@
-use crate::parser::values::Type;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 
@@ -57,13 +56,7 @@ columns:
             .columns
             .iter()
             .map(|c| &row.values[&c.name.as_str()])
-            .map(|t| match t {
-                Type::String(x) => x.to_string(),
-                Type::Int32(x) => x.to_string(),
-                Type::Int64(x) => x.to_string(),
-                Type::Bool(x) => x.to_string(),
-                Type::Double(x) => x.to_string(),
-            })
+            .map(|t| t.to_string())
             .collect();
         if let Some(extra_text) = row.extra_text {
             for text in extra_text {
