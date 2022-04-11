@@ -3,6 +3,7 @@ pub mod values;
 use crate::error::Error;
 use crate::parser::values::{Type, Value};
 use crate::schema::{ColumnType, Schema};
+use chrono::DateTime;
 use regex::Regex;
 use std::collections::HashSet;
 use std::str::{FromStr, Lines};
@@ -72,6 +73,7 @@ impl Parser {
                         ColumnType::Bool => Type::Bool(bool::from_str(value).unwrap()),
                         ColumnType::Float => Type::Float(f32::from_str(value).unwrap()),
                         ColumnType::Double => Type::Double(f64::from_str(value).unwrap()),
+                        ColumnType::DateTime => Type::DateTime(DateTime::from_str(value).unwrap()),
                     };
 
                     (column_name, value)
@@ -119,6 +121,7 @@ impl TryFrom<&str> for Parser {
 mod tests {
     use super::*;
     use crate::schema::{Column, ColumnType};
+    use chrono::Local;
     use std::collections::HashMap;
 
     #[test]
@@ -158,7 +161,8 @@ mod tests {
             (?P<double_value>\\d+\\.\\d+)\\t\
             (?P<long_value>\\d+)\\t\
             (?P<bool_value>.+)\\t\
-            (?P<float_value>\\d+\\.\\d+)"
+            (?P<float_value>\\d+\\.\\d+)\\t\
+            (?P<timestamp>.+)"
                 .to_string(),
             columns: vec![
                 Column::new("int_value", ColumnType::Int32),
@@ -167,6 +171,7 @@ mod tests {
                 Column::new("long_value", ColumnType::Int64),
                 Column::new("bool_value", ColumnType::Bool),
                 Column::new("float_value", ColumnType::Float),
+                Column::new("timestamp", ColumnType::DateTime),
             ],
         };
 
@@ -176,10 +181,11 @@ mod tests {
         let long_value = i64::MAX;
         let bool_value = true;
         let float_value = 1.23;
+        let timestamp = Local::now();
 
         let line = format!(
-            "{}\t{}\t{}\t{}\t{}\t{}",
-            int_value, string_value, double_value, long_value, bool_value, float_value
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            int_value, string_value, double_value, long_value, bool_value, float_value, timestamp
         );
         let parser = Parser::new(schema).unwrap();
         let parsed_value = parser.parse_line(&line).unwrap();
@@ -191,6 +197,7 @@ mod tests {
         expected_values.insert("long_value", Type::Int64(long_value));
         expected_values.insert("bool_value", Type::Bool(bool_value));
         expected_values.insert("float_value", Type::Float(float_value));
+        expected_values.insert("timestamp", Type::DateTime(timestamp));
 
         let expected = Value {
             values: expected_values,

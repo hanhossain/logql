@@ -96,6 +96,8 @@ pub enum ColumnType {
     Float,
     #[serde(alias = "f64")]
     Double,
+    #[serde(alias = "datetime")]
+    DateTime,
 }
 
 impl Display for ColumnType {
@@ -107,6 +109,7 @@ impl Display for ColumnType {
             ColumnType::Bool => "bool",
             ColumnType::Float => "f32",
             ColumnType::Double => "f64",
+            ColumnType::DateTime => "datetime",
         };
         f.write_str(&value)
     }
@@ -132,6 +135,8 @@ columns:
       type: f32
     - name: f64
       type: f64
+    - name: datetime
+      type: datetime
 ";
         let schema = Schema::try_from(raw).unwrap();
         let expected = Schema {
@@ -142,6 +147,7 @@ columns:
                 Column::new("i64", ColumnType::Int64),
                 Column::new("f32", ColumnType::Float),
                 Column::new("f64", ColumnType::Double),
+                Column::new("datetime", ColumnType::DateTime),
             ],
         };
 
@@ -155,6 +161,7 @@ columns:
             ("i64", ColumnType::Int64),
             ("f32", ColumnType::Float),
             ("f64", ColumnType::Double),
+            ("datetime", ColumnType::DateTime),
         ];
 
         for case in cases {

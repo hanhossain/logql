@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -8,6 +9,7 @@ pub enum Type<'a> {
     Bool(bool),
     Float(f32),
     Double(f64),
+    DateTime(DateTime<Local>),
 }
 
 impl<'a> ToString for Type<'a> {
@@ -19,6 +21,7 @@ impl<'a> ToString for Type<'a> {
             Type::Bool(x) => x.to_string(),
             Type::Float(x) => x.to_string(),
             Type::Double(x) => x.to_string(),
+            Type::DateTime(x) => x.to_string(),
         }
     }
 }

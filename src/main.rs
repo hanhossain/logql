@@ -7,8 +7,8 @@ mod schema;
 
 fn main() -> anyhow::Result<()> {
     let source = "\
-1\tfirst\t42.0
-2\tsecond\t3.14
+1\tfirst\t42.0\t2022-04-10T08:00:00Z
+2\tsecond\t3.14\t2022-04-10T09:00:00Z
 this should not match the regex therefore this should be part of the extra text
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. In non fringilla tortor, vitae bibendum \
 nisl. Nullam quis auctor tellus. Cras nisi enim, vehicula semper luctus in, placerat at tellus. \
@@ -16,15 +16,15 @@ Aenean commodo est purus, aliquet fringilla turpis volutpat id. Nam tristique ve
 lobortis. Curabitur tempus mattis lorem, quis fringilla metus consectetur tristique. Suspendisse \
 vitae euismod justo. Aenean sollicitudin gravida sapien id pharetra. Vivamus nec ex et metus \
 gravida tempus et sit amet purus. Praesent bibendum varius imperdiet.
-3\tthird\t10.1
-4\tfourth\t20.2
+3\tthird\t10.1\t2022-04-10T10:00:00Z
+4\tfourth\t20.2\t2022-04-10T11:00:00Z
 nomatch 20 4
 another extra line
-5\tfifth\t11.1
+5\tfifth\t11.1\t2022-04-10T12:00:00Z
 ";
 
     let schema = r"
-regex: (?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)
+regex: (?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)\t(?P<timestamp>.+)
 columns:
     - name: index
       type: i32
@@ -33,6 +33,8 @@ columns:
       multiline: true
     - name: double_value
       type: f64
+    - name: timestamp
+      type: datetime
 ";
 
     let parser = Parser::try_from(schema)?;
