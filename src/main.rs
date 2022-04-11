@@ -1,3 +1,4 @@
+use crate::parser::values::Value;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 
@@ -40,6 +41,14 @@ columns:
     let parser = Parser::try_from(schema)?;
     let parsed = parser.parse(source.lines());
 
+    let mut table = create_table(&parser);
+    populate_table(&mut table, parsed, &parser);
+
+    println!("{table}");
+    Ok(())
+}
+
+fn create_table(parser: &Parser) -> Table {
     let mut table = Table::new();
     let header: Vec<_> = parser
         .schema
@@ -51,8 +60,11 @@ columns:
         .load_preset(presets::UTF8_FULL)
         .set_content_arrangement(ContentArrangement::DynamicFullWidth)
         .set_header(header);
+    table
+}
 
-    for row in parsed {
+fn populate_table(table: &mut Table, parsed_values: Vec<Value>, parser: &Parser) {
+    for row in parsed_values {
         let mut result: Vec<_> = parser
             .schema
             .columns
@@ -69,7 +81,4 @@ columns:
         }
         table.add_row(result);
     }
-
-    println!("{table}");
-    Ok(())
 }
