@@ -131,6 +131,8 @@ columns:
       type: i32
     - name: i64
       type: i64
+    - name: bool
+      type: bool
     - name: f32
       type: f32
     - name: f64
@@ -145,6 +147,7 @@ columns:
                 Column::multiline_string("string"),
                 Column::new("i32", ColumnType::Int32),
                 Column::new("i64", ColumnType::Int64),
+                Column::new("bool", ColumnType::Bool),
                 Column::new("f32", ColumnType::Float),
                 Column::new("f64", ColumnType::Double),
                 Column::new("datetime", ColumnType::DateTime),
@@ -159,6 +162,7 @@ columns:
         let cases = [
             ("i32", ColumnType::Int32),
             ("i64", ColumnType::Int64),
+            ("bool", ColumnType::Bool),
             ("f32", ColumnType::Float),
             ("f64", ColumnType::Double),
             ("datetime", ColumnType::DateTime),
