@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::parser::values::{Type, Value};
 use crate::schema::{ColumnType, Schema};
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::str::{FromStr, Lines};
 
 pub struct Parser {
@@ -76,7 +76,7 @@ impl Parser {
 
                     (column_name, value)
                 })
-                .collect::<HashMap<_, _>>();
+                .collect();
 
             Value {
                 values,
@@ -119,6 +119,7 @@ impl TryFrom<&str> for Parser {
 mod tests {
     use super::*;
     use crate::schema::{Column, ColumnType};
+    use std::collections::HashMap;
 
     #[test]
     fn create_parser() {
