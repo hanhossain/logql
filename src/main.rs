@@ -1,4 +1,4 @@
-use crate::parser::values::Value;
+use crate::parser::values::Event;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 
@@ -39,10 +39,10 @@ columns:
 ";
 
     let parser = Parser::try_from(schema)?;
-    let parsed = parser.parse(source.lines());
+    let events = parser.parse(source.lines());
 
     let mut table = create_table(&parser);
-    populate_table(&mut table, parsed, &parser);
+    populate_table(&mut table, events, &parser);
 
     println!("{table}");
     Ok(())
@@ -63,16 +63,16 @@ fn create_table(parser: &Parser) -> Table {
     table
 }
 
-fn populate_table(table: &mut Table, parsed_values: Vec<Value>, parser: &Parser) {
-    for row in parsed_values {
+fn populate_table(table: &mut Table, events: Vec<Event>, parser: &Parser) {
+    for event in events {
         let mut result: Vec<_> = parser
             .schema
             .columns
             .iter()
-            .map(|c| &row.values[&c.name.as_str()])
+            .map(|c| &event.values[&c.name.as_str()])
             .map(|t| t.to_string())
             .collect();
-        if let Some(extra_text) = row.extra_text {
+        if let Some(extra_text) = event.extra_text {
             for text in extra_text {
                 let multiline_column = &mut result[parser.multiline_index.unwrap()];
                 multiline_column.push('\n');

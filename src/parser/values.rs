@@ -27,7 +27,7 @@ impl<'a> ToString for Type<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Value<'a> {
+pub struct Event<'a> {
     pub values: HashMap<&'a str, Type<'a>>,
     pub extra_text: Option<Vec<&'a str>>,
 }

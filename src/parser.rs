@@ -1,7 +1,7 @@
 pub mod values;
 
 use crate::error::Error;
-use crate::parser::values::{Type, Value};
+use crate::parser::values::{Event, Type};
 use crate::schema::{ColumnType, Schema};
 use chrono::DateTime;
 use regex::Regex;
@@ -37,7 +37,7 @@ impl Parser {
     }
 
     /// Parse all lines
-    pub fn parse<'a>(&'a self, lines: Lines<'a>) -> Vec<Value> {
+    pub fn parse<'a>(&'a self, lines: Lines<'a>) -> Vec<Event> {
         let mut parsed = Vec::new();
         for line in lines {
             if let Some(matched_result) = self.parse_line(line) {
@@ -57,7 +57,7 @@ impl Parser {
     }
 
     /// Parse the capture groups into columns
-    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<Value<'a>> {
+    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<Event<'a>> {
         self.regex.captures(line).map(|captures| {
             let values = self
                 .schema
@@ -80,7 +80,7 @@ impl Parser {
                 })
                 .collect();
 
-            Value {
+            Event {
                 values,
                 extra_text: None,
             }
@@ -199,7 +199,7 @@ mod tests {
         expected_values.insert("float_value", Type::Float(float_value));
         expected_values.insert("timestamp", Type::DateTime(timestamp));
 
-        let expected = Value {
+        let expected = Event {
             values: expected_values,
             extra_text: None,
         };
@@ -244,7 +244,7 @@ mod tests {
         expected_values.insert("string_value", Type::String("this is some string"));
         expected_values.insert("double_value", Type::String("3.14159"));
 
-        let expected = vec![Value {
+        let expected = vec![Event {
             values: expected_values,
             extra_text: Some(vec!["this is extra text"]),
         }];
@@ -272,7 +272,7 @@ mod tests {
         expected_values.insert("string_value", Type::String("this is some string"));
         expected_values.insert("double_value", Type::String("3.14159"));
 
-        let expected = vec![Value {
+        let expected = vec![Event {
             values: expected_values,
             extra_text: None,
         }];
