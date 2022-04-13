@@ -42,12 +42,14 @@ columns:
       type: i32
 ";
 
+    let sql = "select * from source";
+
     let parser = Parser::try_from(schema)?;
-    let engine = Engine::new(&parser);
-    let events = engine.execute(source.lines());
+    let engine = Engine::with_query(&parser, sql)?;
+    let engine_result = engine.execute(source.lines());
 
     let mut table = create_table(&parser);
-    populate_table(&mut table, events, &parser);
+    populate_table(&mut table, engine_result.events, &parser);
 
     println!("{table}");
     Ok(())
