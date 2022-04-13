@@ -1,7 +1,9 @@
+use crate::engine::Engine;
 use crate::parser::values::Event;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 
+mod engine;
 mod error;
 mod parser;
 mod schema;
@@ -41,7 +43,8 @@ columns:
 ";
 
     let parser = Parser::try_from(schema)?;
-    let events = parser.parse(source.lines());
+    let engine = Engine::new(&parser);
+    let events = engine.execute(source.lines());
 
     let mut table = create_table(&parser);
     populate_table(&mut table, events, &parser);
