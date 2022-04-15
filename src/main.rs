@@ -1,6 +1,7 @@
 use crate::engine::Engine;
 use crate::parser::values::Event;
 use crate::parser::Parser;
+use clap::Parser as ClapParser;
 use comfy_table::{presets, ContentArrangement, Table};
 
 mod engine;
@@ -8,44 +9,31 @@ mod error;
 mod parser;
 mod schema;
 
+#[derive(ClapParser, Debug)]
+struct Config {
+    #[clap(long)]
+    source: String,
+    #[clap(long)]
+    schema: String,
+    #[clap(long)]
+    sql: Option<String>,
+}
+
 fn main() -> anyhow::Result<()> {
-    let source = "\
-1\tfirst\t42.0\t2022-04-10T08:00:00Z\t4
-2\tsecond\t3.14\t2022-04-10T09:00:00Z\t3
-this should not match the regex therefore this should be part of the extra text
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. In non fringilla tortor, vitae bibendum \
-nisl. Nullam quis auctor tellus. Cras nisi enim, vehicula semper luctus in, placerat at tellus. \
-Aenean commodo est purus, aliquet fringilla turpis volutpat id. Nam tristique venenatis ex eu \
-lobortis. Curabitur tempus mattis lorem, quis fringilla metus consectetur tristique. Suspendisse \
-vitae euismod justo. Aenean sollicitudin gravida sapien id pharetra. Vivamus nec ex et metus \
-gravida tempus et sit amet purus. Praesent bibendum varius imperdiet.
-3\tthird\t10.1\t2022-04-10T10:00:00Z\t2
-4\tfourth\t20.2\t2022-04-10T11:00:00Z\t4
-nomatch 20 4
-another extra line
-5\tfifth\t11.1\t2022-04-10T12:00:00Z\t2
-";
+    let config: Config = Config::parse();
+    println!("{:#?}", config);
+    let source = std::fs::read_to_string(config.source)?;
+    let schema = std::fs::read_to_string(config.schema)?;
 
-    let schema = r"
-regex: (?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)\t(?P<timestamp>.+)\t(?P<log_level>\d+)
-columns:
-    - name: index
-      type: i32
-    - name: string_value
-      type: string
-      multiline: true
-    - name: double_value
-      type: f64
-    - name: timestamp
-      type: datetime
-    - name: log_level
-      type: i32
-";
+    println!("{}", source);
+    println!("{}", schema);
 
-    let sql = "select * from source";
+    let parser = Parser::try_from(schema.as_str())?;
+    let engine = match config.sql {
+        Some(s) => Engine::with_query(&parser, s.clone()),
+        None => Ok(Engine::new(&parser)),
+    }?;
 
-    let parser = Parser::try_from(schema)?;
-    let engine = Engine::with_query(&parser, sql)?;
     let engine_result = engine.execute(source.lines());
 
     let mut table = create_table(&parser);

@@ -28,9 +28,9 @@ impl<'a> Engine<'a> {
         Engine { parser, columns }
     }
 
-    pub fn with_query(parser: &'a Parser, query: &'a str) -> Result<Engine<'a>, Error> {
+    pub fn with_query(parser: &'a Parser, query: String) -> Result<Engine<'a>, Error> {
         let dialect = GenericDialect {};
-        let mut ast: Vec<Statement> = SqlParser::parse_sql(&dialect, query)?;
+        let mut ast: Vec<Statement> = SqlParser::parse_sql(&dialect, query.as_str())?;
         if ast.len() > 1 {
             return Err(Error::TooManySqlQueries);
         }
