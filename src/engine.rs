@@ -43,35 +43,9 @@ impl<'a> Engine<'a> {
         }
 
         let statement = ast.pop().unwrap();
-        let columns = match &statement {
-            Statement::Query(query) => match &query.body {
-                SetExpr::Select(select) => {
-                    let mut columns = Vec::new();
-
-                    for projection in &select.projection {
-                        let column = match projection {
-                            SelectItem::UnnamedExpr(Expr::Identifier(identifier)) => {
-                                identifier.value.clone()
-                            }
-                            SelectItem::Wildcard => return Ok(Engine::new(parser)),
-                            _ => return Err(Error::InvalidQuery(statement.clone())),
-                        };
-
-                        columns.push(column);
-                    }
-
-                    columns
-                }
-                _ => return Err(Error::InvalidQuery(statement.clone())),
-            },
-            _ => return Err(Error::InvalidQuery(statement.clone())),
-        };
-
-        Ok(Engine {
-            parser,
-            columns,
-            statement: Some(statement),
-        })
+        let mut engine = Engine::new(parser);
+        engine.statement = Some(statement);
+        Ok(engine)
     }
 
     pub fn execute(&self, lines: Lines<'a>) -> Result<TableResult, Error> {
@@ -111,7 +85,19 @@ impl<'a> Engine<'a> {
                                             parser: self.parser,
                                         })
                                     }
+                                    SelectItem::ExprWithAlias {
+                                        expr: Expr::Identifier(identifier),
+                                        alias,
+                                    } => {
+                                        let value =
+                                            event.values.remove(identifier.value.as_str()).unwrap();
+                                        projected_values.insert(alias.value.as_str(), value);
+                                        if columns.is_none() {
+                                            inner_columns.push(alias.value.clone());
+                                        }
+                                    }
                                     _ => return Err(Error::InvalidQuery(statement.clone())),
+                                    
                                 }
                             }
                             event.values = projected_values;
