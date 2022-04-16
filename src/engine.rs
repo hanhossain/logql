@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::parser::values::Event;
 use crate::parser::Parser;
+use comfy_table::{presets, ContentArrangement, Table};
 use sqlparser::ast::{Expr, SelectItem, SetExpr, Statement};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
@@ -10,11 +11,13 @@ pub struct Engine<'a> {
     parser: &'a Parser,
     // TODO: execute needs to use the columns
     columns: Vec<String>,
+    statement: Option<Statement>,
 }
 
 pub struct EngineResult<'a> {
     pub columns: Vec<String>,
     pub events: Vec<Event<'a>>,
+    parser: &'a Parser,
 }
 
 impl<'a> Engine<'a> {
@@ -25,7 +28,11 @@ impl<'a> Engine<'a> {
             .iter()
             .map(|c| c.name.clone())
             .collect();
-        Engine { parser, columns }
+        Engine {
+            parser,
+            columns,
+            statement: None,
+        }
     }
 
     pub fn with_query(parser: &'a Parser, query: String) -> Result<Engine<'a>, Error> {
@@ -60,7 +67,11 @@ impl<'a> Engine<'a> {
             _ => return Err(Error::InvalidQuery(statement.clone())),
         };
 
-        Ok(Engine { parser, columns })
+        Ok(Engine {
+            parser,
+            columns,
+            statement: Some(statement),
+        })
     }
 
     pub fn execute(&self, lines: Lines<'a>) -> EngineResult {
@@ -68,6 +79,52 @@ impl<'a> Engine<'a> {
         EngineResult {
             columns: self.columns.clone(),
             events,
+            parser: self.parser,
+        }
+    }
+}
+
+impl<'a> EngineResult<'a> {
+    pub fn table(&self) -> Table {
+        let mut table = self.create_table();
+        self.populate_table(&mut table);
+        table
+    }
+
+    fn create_table(&self) -> Table {
+        let mut table = Table::new();
+        let header: Vec<_> = self
+            .parser
+            .schema
+            .columns
+            .iter()
+            .map(|c| c.name.to_owned())
+            .collect();
+        table
+            .load_preset(presets::UTF8_FULL)
+            .set_content_arrangement(ContentArrangement::DynamicFullWidth)
+            .set_header(header);
+        table
+    }
+
+    fn populate_table(&self, table: &mut Table) {
+        for event in &self.events {
+            let mut result: Vec<_> = self
+                .parser
+                .schema
+                .columns
+                .iter()
+                .map(|c| &event.values[&c.name.as_str()])
+                .map(|t| t.to_string())
+                .collect();
+            if let Some(extra_text) = &event.extra_text {
+                for text in extra_text {
+                    let multiline_column = &mut result[self.parser.multiline_index.unwrap()];
+                    multiline_column.push('\n');
+                    multiline_column.push_str(text);
+                }
+            }
+            table.add_row(result);
         }
     }
 }
