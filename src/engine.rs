@@ -5,11 +5,11 @@ use comfy_table::{presets, ContentArrangement, Table};
 use sqlparser::ast::{Expr, SelectItem, SetExpr, Statement};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
+use std::collections::HashMap;
 use std::str::Lines;
 
 pub struct Engine<'a> {
     parser: &'a Parser,
-    // TODO: execute needs to use the columns
     columns: Vec<String>,
     statement: Option<Statement>,
 }
@@ -74,13 +74,68 @@ impl<'a> Engine<'a> {
         })
     }
 
-    pub fn execute(&self, lines: Lines<'a>) -> EngineResult {
+    pub fn execute(&self, lines: Lines<'a>) -> Result<EngineResult, Error> {
         let events = self.parser.parse(lines);
-        EngineResult {
+        self.project_result(events)
+    }
+
+    fn project_result(&'a self, mut events: Vec<Event<'a>>) -> Result<EngineResult, Error> {
+        if let Some(statement) = &self.statement {
+            if let Statement::Query(query) = statement {
+                return match &query.body {
+                    SetExpr::Select(select) => {
+                        let mut columns = None;
+                        for event in events.iter_mut() {
+                            let mut projected_values = HashMap::new();
+                            let mut inner_columns = Vec::new();
+                            for projection in &select.projection {
+                                match projection {
+                                    SelectItem::UnnamedExpr(unnamed_expr) => match unnamed_expr {
+                                        Expr::Identifier(identifier) => {
+                                            let value = event
+                                                .values
+                                                .remove(identifier.value.as_str())
+                                                .unwrap();
+                                            projected_values
+                                                .insert(identifier.value.as_str(), value);
+                                            if columns.is_none() {
+                                                inner_columns.push(identifier.value.clone());
+                                            }
+                                        }
+                                        _ => return Err(Error::InvalidQuery(statement.clone())),
+                                    },
+                                    SelectItem::Wildcard => {
+                                        return Ok(EngineResult {
+                                            columns: self.columns.clone(),
+                                            events,
+                                            parser: self.parser,
+                                        })
+                                    }
+                                    _ => return Err(Error::InvalidQuery(statement.clone())),
+                                }
+                            }
+                            event.values = projected_values;
+                            if columns.is_none() {
+                                columns = Some(inner_columns);
+                            }
+                        }
+
+                        Ok(EngineResult {
+                            columns: columns.unwrap(),
+                            events,
+                            parser: self.parser,
+                        })
+                    }
+                    _ => Err(Error::InvalidQuery(statement.clone())),
+                };
+            }
+        }
+
+        Ok(EngineResult {
             columns: self.columns.clone(),
             events,
             parser: self.parser,
-        }
+        })
     }
 }
 
@@ -93,13 +148,7 @@ impl<'a> EngineResult<'a> {
 
     fn create_table(&self) -> Table {
         let mut table = Table::new();
-        let header: Vec<_> = self
-            .parser
-            .schema
-            .columns
-            .iter()
-            .map(|c| c.name.to_owned())
-            .collect();
+        let header: Vec<_> = self.columns.iter().map(|c| c.to_owned()).collect();
         table
             .load_preset(presets::UTF8_FULL)
             .set_content_arrangement(ContentArrangement::DynamicFullWidth)
@@ -110,11 +159,9 @@ impl<'a> EngineResult<'a> {
     fn populate_table(&self, table: &mut Table) {
         for event in &self.events {
             let mut result: Vec<_> = self
-                .parser
-                .schema
                 .columns
                 .iter()
-                .map(|c| &event.values[&c.name.as_str()])
+                .map(|c| &event.values[&c.as_str()])
                 .map(|t| t.to_string())
                 .collect();
             if let Some(extra_text) = &event.extra_text {
@@ -169,7 +216,9 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table";
-        let error = Engine::with_query(&parser, query).err().unwrap();
+        let error = Engine::with_query(&parser, query.to_string())
+            .err()
+            .unwrap();
         match error {
             Error::SqlParserError(_) => {}
             x => panic!(
@@ -192,7 +241,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1";
-        let engine = Engine::with_query(&parser, query).unwrap();
+        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
         let parser_columns: Vec<_> = parser
             .schema
             .columns

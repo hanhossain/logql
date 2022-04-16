@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
         None => Ok(Engine::new(&parser)),
     }?;
 
-    let engine_result = engine.execute(source.lines());
+    let engine_result = engine.execute(source.lines())?;
     let table = engine_result.table();
     println!("{table}");
     Ok(())
