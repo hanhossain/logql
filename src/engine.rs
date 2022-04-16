@@ -97,7 +97,6 @@ impl<'a> Engine<'a> {
                                         }
                                     }
                                     _ => return Err(Error::InvalidQuery(statement.clone())),
-                                    
                                 }
                             }
                             event.values = projected_values;
@@ -224,16 +223,18 @@ columns:
     - name: col2
       type: string
 ";
+        let source = "\
+1\tone
+2\ttwo
+";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1";
         let engine = Engine::with_query(&parser, query.to_string()).unwrap();
-        let parser_columns: Vec<_> = parser
-            .schema
-            .columns
-            .iter()
-            .map(|c| c.name.as_str())
-            .collect();
-        assert_eq!(engine.columns, parser_columns);
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
     }
 }
