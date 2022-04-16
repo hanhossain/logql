@@ -164,6 +164,7 @@ impl<'a> TableResult<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::values::Type;
     use crate::schema::Schema;
 
     #[test]
@@ -214,7 +215,7 @@ columns:
     }
 
     #[test]
-    fn sql_wildcard_projection() {
+    fn sql_projection_wildcard() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
 columns:
@@ -236,5 +237,105 @@ columns:
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
         );
+
+        let events: Vec<_> = vec![("1", "one"), ("2", "two")]
+            .iter()
+            .map(|(col1, col2)| {
+                let mut values = HashMap::new();
+                values.insert("col1", Type::String(col1));
+                values.insert("col2", Type::String(col2));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_projection_identifier_all() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+    - name: col3
+      type: string
+";
+        let source = "\
+1\tone\tfirst
+2\ttwo\tsecond
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT col1, col2, col3 FROM table1";
+        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string(), "col3".to_string()]
+        );
+
+        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
+            .iter()
+            .map(|(col1, col2, col3)| {
+                let mut values = HashMap::new();
+                values.insert("col1", Type::String(col1));
+                values.insert("col2", Type::String(col2));
+                values.insert("col3", Type::String(col3));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_projection_identifier_subset() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+    - name: col3
+      type: string
+";
+        let source = "\
+1\tone\tfirst
+2\ttwo\tsecond
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT col1, col3 FROM table1";
+        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col3".to_string()]
+        );
+
+        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
+            .iter()
+            .map(|(col1, _, col3)| {
+                let mut values = HashMap::new();
+                values.insert("col1", Type::String(col1));
+                values.insert("col3", Type::String(col3));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
     }
 }
