@@ -338,4 +338,93 @@ columns:
             .collect();
         assert_eq!(table_result.events, events);
     }
+
+    #[test]
+    fn sql_projection_alias_all() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+    - name: col3
+      type: string
+";
+        let source = "\
+1\tone\tfirst
+2\ttwo\tsecond
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT col1 as column1, col2 as column2, col3 as column3 FROM table1";
+        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec![
+                "column1".to_string(),
+                "column2".to_string(),
+                "column3".to_string()
+            ]
+        );
+
+        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
+            .iter()
+            .map(|(col1, col2, col3)| {
+                let mut values = HashMap::new();
+                values.insert("column1", Type::String(col1));
+                values.insert("column2", Type::String(col2));
+                values.insert("column3", Type::String(col3));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_projection_alias_subset() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+    - name: col3
+      type: string
+";
+        let source = "\
+1\tone\tfirst
+2\ttwo\tsecond
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT col1 as column1, col3 as column3 FROM table1";
+        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["column1".to_string(), "column3".to_string()]
+        );
+
+        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
+            .iter()
+            .map(|(col1, _, col3)| {
+                let mut values = HashMap::new();
+                values.insert("column1", Type::String(col1));
+                values.insert("column3", Type::String(col3));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
+    }
 }
