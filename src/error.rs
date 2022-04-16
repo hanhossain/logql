@@ -6,7 +6,7 @@ use thiserror::Error;
 pub enum Error {
     #[error("Column '{0}' is a '{1}' so it cannot be multiline. Only strings can be multiline.")]
     InvalidMultilineType(String, ColumnType),
-    #[error("The SQL query was invalid. Query: {0:?}")]
+    #[error("The SQL query was invalid. Query: {0:#?}")]
     InvalidQuery(Statement),
     #[error("Invalid regex statement")]
     InvalidRegex(#[from] regex::Error),
