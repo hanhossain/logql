@@ -19,12 +19,8 @@ struct Config {
 
 fn main() -> anyhow::Result<()> {
     let config: Config = Config::parse();
-    println!("{:#?}", config);
     let source = std::fs::read_to_string(config.source)?;
     let schema = std::fs::read_to_string(config.schema)?;
-
-    println!("{}", source);
-    println!("{}", schema);
 
     let parser = Parser::try_from(schema.as_str())?;
     let engine = match config.sql {
@@ -34,6 +30,6 @@ fn main() -> anyhow::Result<()> {
 
     let engine_result = engine.execute(source.lines())?;
     let table = engine_result.table();
-    println!("{table}");
+    println!("{}", table);
     Ok(())
 }
