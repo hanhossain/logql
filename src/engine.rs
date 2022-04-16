@@ -14,7 +14,7 @@ pub struct Engine<'a> {
     statement: Option<Statement>,
 }
 
-pub struct EngineResult<'a> {
+pub struct TableResult<'a> {
     pub columns: Vec<String>,
     pub events: Vec<Event<'a>>,
     parser: &'a Parser,
@@ -74,12 +74,12 @@ impl<'a> Engine<'a> {
         })
     }
 
-    pub fn execute(&self, lines: Lines<'a>) -> Result<EngineResult, Error> {
+    pub fn execute(&self, lines: Lines<'a>) -> Result<TableResult, Error> {
         let events = self.parser.parse(lines);
         self.project_result(events)
     }
 
-    fn project_result(&'a self, mut events: Vec<Event<'a>>) -> Result<EngineResult, Error> {
+    fn project_result(&'a self, mut events: Vec<Event<'a>>) -> Result<TableResult, Error> {
         if let Some(statement) = &self.statement {
             if let Statement::Query(query) = statement {
                 return match &query.body {
@@ -105,7 +105,7 @@ impl<'a> Engine<'a> {
                                         _ => return Err(Error::InvalidQuery(statement.clone())),
                                     },
                                     SelectItem::Wildcard => {
-                                        return Ok(EngineResult {
+                                        return Ok(TableResult {
                                             columns: self.columns.clone(),
                                             events,
                                             parser: self.parser,
@@ -120,7 +120,7 @@ impl<'a> Engine<'a> {
                             }
                         }
 
-                        Ok(EngineResult {
+                        Ok(TableResult {
                             columns: columns.unwrap(),
                             events,
                             parser: self.parser,
@@ -131,7 +131,7 @@ impl<'a> Engine<'a> {
             }
         }
 
-        Ok(EngineResult {
+        Ok(TableResult {
             columns: self.columns.clone(),
             events,
             parser: self.parser,
@@ -139,7 +139,7 @@ impl<'a> Engine<'a> {
     }
 }
 
-impl<'a> EngineResult<'a> {
+impl<'a> TableResult<'a> {
     pub fn table(&self) -> Table {
         let mut table = self.create_table();
         self.populate_table(&mut table);
