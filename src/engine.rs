@@ -2,11 +2,11 @@ use crate::error::Error;
 use crate::parser::values::Event;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
-use sqlparser::ast::{Expr, SelectItem, SetExpr, Statement};
+use sqlparser::ast::{Expr, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
 use std::collections::HashMap;
-use std::str::Lines;
+use std::str::{FromStr, Lines};
 
 pub struct Engine {
     parser: Parser,
@@ -69,7 +69,24 @@ impl TableResult {
     }
 
     fn process(self) -> Result<TableResult, Error> {
-        self.project()
+        self.project()?.limit()
+    }
+
+    fn limit(mut self) -> Result<TableResult, Error> {
+        if let Some(statement) = &self.statement {
+            if let Statement::Query(query) = statement {
+                match &query.limit {
+                    Some(Expr::Value(Value::Number(limit, _))) => {
+                        let limit = usize::from_str(limit.as_str()).unwrap();
+                        self.events = self.events[..limit].to_vec().clone();
+                    }
+                    Some(_) => return Err(Error::InvalidQuery(statement.clone())),
+                    None => (),
+                }
+            }
+        }
+
+        Ok(self)
     }
 
     fn project(mut self) -> Result<TableResult, Error> {
@@ -436,6 +453,90 @@ columns:
                 let mut values = HashMap::new();
                 values.insert("column1".to_string(), Type::String(col1.to_string()));
                 values.insert("column3".to_string(), Type::String(col3.to_string()));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_limit_all() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 LIMIT 3";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        let events: Vec<_> = vec![("1", "one"), ("2", "two"), ("3", "three")]
+            .iter()
+            .map(|(col1, col2)| {
+                let mut values = HashMap::new();
+                values.insert("col1".to_string(), Type::String(col1.to_string()));
+                values.insert("col2".to_string(), Type::String(col2.to_string()));
+                values
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect();
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_limit_subset() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 LIMIT 2";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        let events: Vec<_> = vec![("1", "one"), ("2", "two")]
+            .iter()
+            .map(|(col1, col2)| {
+                let mut values = HashMap::new();
+                values.insert("col1".to_string(), Type::String(col1.to_string()));
+                values.insert("col2".to_string(), Type::String(col2.to_string()));
                 values
             })
             .map(|values| Event {

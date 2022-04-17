@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     String(String),
     Int32(i32),
@@ -26,7 +26,7 @@ impl ToString for Type {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Event {
     pub values: HashMap<String, Type>,
     pub extra_text: Option<Vec<String>>,
