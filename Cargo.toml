@@ -15,3 +15,6 @@ serde = { version = "1.0.133", features = ["derive"] }
 serde_yaml = "0.8.23"
 sqlparser = "0.16.0"
 thiserror = "1.0.30"
+
+[profile.release]
+debug = true
