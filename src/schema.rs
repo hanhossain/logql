@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 pub struct Schema {
     pub regex: String,
+    pub table: String,
     pub columns: Vec<Column>,
 }
 
@@ -123,6 +124,7 @@ mod tests {
     fn parse_schema() {
         let raw = "
 regex: '*'
+table: logs
 columns:
     - name: string
       type: string
@@ -143,6 +145,7 @@ columns:
         let schema = Schema::try_from(raw).unwrap();
         let expected = Schema {
             regex: "*".to_string(),
+            table: "logs".to_string(),
             columns: vec![
                 Column::multiline_string("string"),
                 Column::new("i32", ColumnType::Int32),
@@ -172,6 +175,7 @@ columns:
             let raw = format!(
                 "
 regex: '*'
+table: logs
 columns:
     - name: string
       type: string
@@ -200,6 +204,7 @@ columns:
     fn parse_invalid_multiple_multiline() {
         let raw = "
 regex: '*'
+table: logs
 columns:
     - name: string1
       type: string

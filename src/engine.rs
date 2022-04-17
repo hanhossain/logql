@@ -171,6 +171,7 @@ mod tests {
     fn create_engine() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
 columns:
     - name: col1
       type: string
@@ -193,6 +194,7 @@ columns:
     fn create_with_broken_sql() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
 columns:
     - name: col1
       type: string
@@ -218,6 +220,7 @@ columns:
     fn sql_projection_wildcard() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
 columns:
     - name: col1
       type: string
@@ -258,6 +261,7 @@ columns:
     fn sql_projection_identifier_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+table: logs
 columns:
     - name: col1
       type: string
@@ -301,6 +305,7 @@ columns:
     fn sql_projection_identifier_subset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+table: logs
 columns:
     - name: col1
       type: string
@@ -343,6 +348,7 @@ columns:
     fn sql_projection_alias_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+table: logs
 columns:
     - name: col1
       type: string
@@ -390,6 +396,7 @@ columns:
     fn sql_projection_alias_subset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+table: logs
 columns:
     - name: col1
       type: string
