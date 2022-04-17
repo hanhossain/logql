@@ -1,7 +1,6 @@
 use crate::engine::Engine;
 use crate::parser::Parser;
 use clap::Parser as ClapParser;
-use sqlparser::test_utils::table;
 
 mod engine;
 mod error;
