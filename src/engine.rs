@@ -8,20 +8,14 @@ use sqlparser::parser::Parser as SqlParser;
 use std::collections::HashMap;
 use std::str::Lines;
 
-pub struct Engine<'a> {
-    parser: &'a Parser,
+pub struct Engine {
+    parser: Parser,
     columns: Vec<String>,
     statement: Option<Statement>,
 }
 
-pub struct TableResult {
-    pub columns: Vec<String>,
-    pub events: Vec<Event>,
-    parser: Parser,
-}
-
-impl<'a> Engine<'a> {
-    pub fn new(parser: &'a Parser) -> Engine<'a> {
+impl Engine {
+    pub fn new(parser: Parser) -> Engine {
         let columns = parser
             .schema
             .columns
@@ -35,7 +29,7 @@ impl<'a> Engine<'a> {
         }
     }
 
-    pub fn with_query(parser: &'a Parser, query: String) -> Result<Engine<'a>, Error> {
+    pub fn with_query(parser: Parser, query: String) -> Result<Engine, Error> {
         let dialect = GenericDialect {};
         let mut ast: Vec<Statement> = SqlParser::parse_sql(&dialect, query.as_str())?;
         if ast.len() > 1 {
@@ -48,18 +42,43 @@ impl<'a> Engine<'a> {
         Ok(engine)
     }
 
-    pub fn execute(&self, lines: Lines<'a>) -> Result<TableResult, Error> {
+    pub fn execute<'a>(&'a self, lines: Lines<'a>) -> Result<TableResult, Error> {
         let events = self.parser.parse(lines);
-        self.project_result(events)
+        let table_result = TableResult {
+            columns: self.columns.clone(),
+            events,
+            parser: self.parser.clone(),
+            statement: self.statement.clone(),
+        };
+        table_result.process()
+    }
+}
+
+pub struct TableResult {
+    pub columns: Vec<String>,
+    pub events: Vec<Event>,
+    parser: Parser,
+    statement: Option<Statement>,
+}
+
+impl TableResult {
+    pub fn table(&self) -> Table {
+        let mut table = self.create_table();
+        self.populate_table(&mut table);
+        table
     }
 
-    fn project_result(&'a self, mut events: Vec<Event>) -> Result<TableResult, Error> {
+    fn process(self) -> Result<TableResult, Error> {
+        self.project()
+    }
+
+    fn project(mut self) -> Result<TableResult, Error> {
         if let Some(statement) = &self.statement {
             if let Statement::Query(query) = statement {
                 return match &query.body {
                     SetExpr::Select(select) => {
                         let mut columns = None;
-                        for event in events.iter_mut() {
+                        for event in self.events.iter_mut() {
                             let mut projected_values = HashMap::new();
                             let mut inner_columns = Vec::new();
                             for projection in &select.projection {
@@ -78,13 +97,7 @@ impl<'a> Engine<'a> {
                                         }
                                         _ => return Err(Error::InvalidQuery(statement.clone())),
                                     },
-                                    SelectItem::Wildcard => {
-                                        return Ok(TableResult {
-                                            columns: self.columns.clone(),
-                                            events,
-                                            parser: self.parser.clone(),
-                                        })
-                                    }
+                                    SelectItem::Wildcard => return Ok(self),
                                     SelectItem::ExprWithAlias {
                                         expr: Expr::Identifier(identifier),
                                         alias,
@@ -105,30 +118,15 @@ impl<'a> Engine<'a> {
                             }
                         }
 
-                        Ok(TableResult {
-                            columns: columns.unwrap(),
-                            events,
-                            parser: self.parser.clone(),
-                        })
+                        self.columns = columns.unwrap();
+                        Ok(self)
                     }
                     _ => Err(Error::InvalidQuery(statement.clone())),
                 };
             }
         }
 
-        Ok(TableResult {
-            columns: self.columns.clone(),
-            events,
-            parser: self.parser.clone(),
-        })
-    }
-}
-
-impl TableResult {
-    pub fn table(&self) -> Table {
-        let mut table = self.create_table();
-        self.populate_table(&mut table);
-        table
+        Ok(self)
     }
 
     fn create_table(&self) -> Table {
@@ -195,7 +193,7 @@ columns:
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
-        let engine = Engine::new(&parser);
+        let engine = Engine::new(parser.clone());
         let parser_columns: Vec<_> = parser
             .schema
             .columns
@@ -219,9 +217,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table";
-        let error = Engine::with_query(&parser, query.to_string())
-            .err()
-            .unwrap();
+        let error = Engine::with_query(parser, query.to_string()).err().unwrap();
         match error {
             Error::SqlParserError(_) => {}
             x => panic!(
@@ -249,7 +245,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1";
-        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
         let table_result = engine.execute(source.lines()).unwrap();
         assert_eq!(
             table_result.columns,
@@ -292,7 +288,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1, col2, col3 FROM table1";
-        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
         let table_result = engine.execute(source.lines()).unwrap();
         assert_eq!(
             table_result.columns,
@@ -336,7 +332,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1, col3 FROM table1";
-        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
         let table_result = engine.execute(source.lines()).unwrap();
         assert_eq!(
             table_result.columns,
@@ -379,7 +375,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1 as column1, col2 as column2, col3 as column3 FROM table1";
-        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
         let table_result = engine.execute(source.lines()).unwrap();
         assert_eq!(
             table_result.columns,
@@ -427,7 +423,7 @@ columns:
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1 as column1, col3 as column3 FROM table1";
-        let engine = Engine::with_query(&parser, query.to_string()).unwrap();
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
         let table_result = engine.execute(source.lines()).unwrap();
         assert_eq!(
             table_result.columns,

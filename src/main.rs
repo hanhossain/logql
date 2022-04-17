@@ -24,8 +24,8 @@ fn main() -> anyhow::Result<()> {
 
     let parser = Parser::try_from(schema.as_str())?;
     let engine = match config.sql {
-        Some(s) => Engine::with_query(&parser, s.clone()),
-        None => Ok(Engine::new(&parser)),
+        Some(s) => Engine::with_query(parser, s.clone()),
+        None => Ok(Engine::new(parser)),
     }?;
 
     let table_result = engine.execute(source.lines())?;
