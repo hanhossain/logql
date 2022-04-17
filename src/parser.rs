@@ -8,7 +8,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::str::{FromStr, Lines};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Parser {
     pub schema: Schema,
     pub regex: Regex,

@@ -14,10 +14,10 @@ pub struct Engine<'a> {
     statement: Option<Statement>,
 }
 
-pub struct TableResult<'a> {
+pub struct TableResult {
     pub columns: Vec<String>,
     pub events: Vec<Event>,
-    parser: &'a Parser,
+    parser: Parser,
 }
 
 impl<'a> Engine<'a> {
@@ -82,7 +82,7 @@ impl<'a> Engine<'a> {
                                         return Ok(TableResult {
                                             columns: self.columns.clone(),
                                             events,
-                                            parser: self.parser,
+                                            parser: self.parser.clone(),
                                         })
                                     }
                                     SelectItem::ExprWithAlias {
@@ -108,7 +108,7 @@ impl<'a> Engine<'a> {
                         Ok(TableResult {
                             columns: columns.unwrap(),
                             events,
-                            parser: self.parser,
+                            parser: self.parser.clone(),
                         })
                     }
                     _ => Err(Error::InvalidQuery(statement.clone())),
@@ -119,12 +119,12 @@ impl<'a> Engine<'a> {
         Ok(TableResult {
             columns: self.columns.clone(),
             events,
-            parser: self.parser,
+            parser: self.parser.clone(),
         })
     }
 }
 
-impl<'a> TableResult<'a> {
+impl TableResult {
     pub fn table(&self) -> Table {
         let mut table = self.create_table();
         self.populate_table(&mut table);

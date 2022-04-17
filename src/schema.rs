@@ -2,7 +2,7 @@ use crate::error::Error;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Clone)]
 pub struct Schema {
     pub regex: String,
     pub table: String,
@@ -54,7 +54,7 @@ impl TryFrom<&str> for Schema {
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Clone)]
 pub struct Column {
     pub name: String,
     pub r#type: ColumnType,
