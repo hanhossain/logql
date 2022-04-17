@@ -142,6 +142,19 @@ impl<'a> TableResult<'a> {
     }
 
     fn populate_table(&self, table: &mut Table) {
+        let multiline_index = self
+            .parser
+            .multiline_column
+            .as_ref()
+            .map(|c| c.as_str())
+            .map(|multiline_column| {
+                self.columns
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, c)| c.as_str() == multiline_column)
+                    .map(|(idx, _)| idx)
+                    .next()
+            });
         for event in &self.events {
             let mut result: Vec<_> = self
                 .columns
@@ -150,10 +163,12 @@ impl<'a> TableResult<'a> {
                 .map(|t| t.to_string())
                 .collect();
             if let Some(extra_text) = &event.extra_text {
-                for text in extra_text {
-                    let multiline_column = &mut result[self.parser.multiline_index.unwrap()];
-                    multiline_column.push('\n');
-                    multiline_column.push_str(text);
+                if let Some(Some(multiline_index)) = multiline_index {
+                    for text in extra_text {
+                        let multiline_column = &mut result[multiline_index];
+                        multiline_column.push('\n');
+                        multiline_column.push_str(text);
+                    }
                 }
             }
             table.add_row(result);
