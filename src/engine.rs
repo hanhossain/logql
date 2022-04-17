@@ -216,6 +216,21 @@ mod tests {
     use crate::parser::values::Type;
     use crate::schema::Schema;
 
+    fn generate_events(source: &[&[(&str, &str)]]) -> Vec<Event> {
+        source
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|(k, v)| (k.to_string(), Type::String(v.to_string())))
+                    .collect::<HashMap<_, _>>()
+            })
+            .map(|values| Event {
+                values,
+                extra_text: None,
+            })
+            .collect()
+    }
+
     #[test]
     fn create_engine() {
         let schema = "\
@@ -288,19 +303,13 @@ columns:
             vec!["col1".to_string(), "col2".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one"), ("2", "two")]
-            .iter()
-            .map(|(col1, col2)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col2".to_string(), Type::String(col2.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col2", "one")].as_slice(),
+                [("col1", "2"), ("col2", "two")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -331,20 +340,13 @@ columns:
             vec!["col1".to_string(), "col2".to_string(), "col3".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
-            .iter()
-            .map(|(col1, col2, col3)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col2".to_string(), Type::String(col2.to_string()));
-                values.insert("col3".to_string(), Type::String(col3.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col2", "one"), ("col3", "first")].as_slice(),
+                [("col1", "2"), ("col2", "two"), ("col3", "second")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -375,19 +377,13 @@ columns:
             vec!["col1".to_string(), "col3".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
-            .iter()
-            .map(|(col1, _, col3)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col3".to_string(), Type::String(col3.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col3", "first")].as_slice(),
+                [("col1", "2"), ("col3", "second")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -422,20 +418,13 @@ columns:
             ]
         );
 
-        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
-            .iter()
-            .map(|(col1, col2, col3)| {
-                let mut values = HashMap::new();
-                values.insert("column1".to_string(), Type::String(col1.to_string()));
-                values.insert("column2".to_string(), Type::String(col2.to_string()));
-                values.insert("column3".to_string(), Type::String(col3.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("column1", "1"), ("column2", "one"), ("column3", "first")].as_slice(),
+                [("column1", "2"), ("column2", "two"), ("column3", "second")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -466,19 +455,13 @@ columns:
             vec!["column1".to_string(), "column3".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one", "first"), ("2", "two", "second")]
-            .iter()
-            .map(|(col1, _, col3)| {
-                let mut values = HashMap::new();
-                values.insert("column1".to_string(), Type::String(col1.to_string()));
-                values.insert("column3".to_string(), Type::String(col3.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("column1", "1"), ("column3", "first")].as_slice(),
+                [("column1", "2"), ("column3", "second")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -508,19 +491,14 @@ columns:
             vec!["col1".to_string(), "col2".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one"), ("2", "two"), ("3", "three")]
-            .iter()
-            .map(|(col1, col2)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col2".to_string(), Type::String(col2.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col2", "one")].as_slice(),
+                [("col1", "2"), ("col2", "two")].as_slice(),
+                [("col1", "3"), ("col2", "three")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -550,19 +528,13 @@ columns:
             vec!["col1".to_string(), "col2".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one"), ("2", "two")]
-            .iter()
-            .map(|(col1, col2)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col2".to_string(), Type::String(col2.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col2", "one")].as_slice(),
+                [("col1", "2"), ("col2", "two")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -592,19 +564,14 @@ columns:
             vec!["col1".to_string(), "col2".to_string()]
         );
 
-        let events: Vec<_> = vec![("1", "one"), ("2", "two"), ("3", "three")]
-            .iter()
-            .map(|(col1, col2)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col2".to_string(), Type::String(col2.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col2", "one")].as_slice(),
+                [("col1", "2"), ("col2", "two")].as_slice(),
+                [("col1", "3"), ("col2", "three")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 
@@ -634,19 +601,13 @@ columns:
             vec!["col1".to_string(), "col2".to_string()]
         );
 
-        let events: Vec<_> = vec![("2", "two"), ("3", "three")]
-            .iter()
-            .map(|(col1, col2)| {
-                let mut values = HashMap::new();
-                values.insert("col1".to_string(), Type::String(col1.to_string()));
-                values.insert("col2".to_string(), Type::String(col2.to_string()));
-                values
-            })
-            .map(|values| Event {
-                values,
-                extra_text: None,
-            })
-            .collect();
+        let events = generate_events(
+            [
+                [("col1", "2"), ("col2", "two")].as_slice(),
+                [("col1", "3"), ("col2", "three")].as_slice(),
+            ]
+            .as_slice(),
+        );
         assert_eq!(table_result.events, events);
     }
 }
