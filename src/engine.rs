@@ -16,7 +16,7 @@ pub struct Engine<'a> {
 
 pub struct TableResult<'a> {
     pub columns: Vec<String>,
-    pub events: Vec<Event<'a>>,
+    pub events: Vec<Event>,
     parser: &'a Parser,
 }
 
@@ -53,7 +53,7 @@ impl<'a> Engine<'a> {
         self.project_result(events)
     }
 
-    fn project_result(&'a self, mut events: Vec<Event<'a>>) -> Result<TableResult, Error> {
+    fn project_result(&'a self, mut events: Vec<Event>) -> Result<TableResult, Error> {
         if let Some(statement) = &self.statement {
             if let Statement::Query(query) = statement {
                 return match &query.body {
@@ -71,7 +71,7 @@ impl<'a> Engine<'a> {
                                                 .remove(identifier.value.as_str())
                                                 .unwrap();
                                             projected_values
-                                                .insert(identifier.value.as_str(), value);
+                                                .insert(identifier.value.clone(), value);
                                             if columns.is_none() {
                                                 inner_columns.push(identifier.value.clone());
                                             }
@@ -91,7 +91,7 @@ impl<'a> Engine<'a> {
                                     } => {
                                         let value =
                                             event.values.remove(identifier.value.as_str()).unwrap();
-                                        projected_values.insert(alias.value.as_str(), value);
+                                        projected_values.insert(alias.value.clone(), value);
                                         if columns.is_none() {
                                             inner_columns.push(alias.value.clone());
                                         }
@@ -159,7 +159,7 @@ impl<'a> TableResult<'a> {
             let mut result: Vec<_> = self
                 .columns
                 .iter()
-                .map(|c| &event.values[&c.as_str()])
+                .map(|c| &event.values[c])
                 .map(|t| t.to_string())
                 .collect();
             if let Some(extra_text) = &event.extra_text {
@@ -260,8 +260,8 @@ columns:
             .iter()
             .map(|(col1, col2)| {
                 let mut values = HashMap::new();
-                values.insert("col1", Type::String(col1));
-                values.insert("col2", Type::String(col2));
+                values.insert("col1".to_string(), Type::String(col1.to_string()));
+                values.insert("col2".to_string(), Type::String(col2.to_string()));
                 values
             })
             .map(|values| Event {
@@ -303,9 +303,9 @@ columns:
             .iter()
             .map(|(col1, col2, col3)| {
                 let mut values = HashMap::new();
-                values.insert("col1", Type::String(col1));
-                values.insert("col2", Type::String(col2));
-                values.insert("col3", Type::String(col3));
+                values.insert("col1".to_string(), Type::String(col1.to_string()));
+                values.insert("col2".to_string(), Type::String(col2.to_string()));
+                values.insert("col3".to_string(), Type::String(col3.to_string()));
                 values
             })
             .map(|values| Event {
@@ -347,8 +347,8 @@ columns:
             .iter()
             .map(|(col1, _, col3)| {
                 let mut values = HashMap::new();
-                values.insert("col1", Type::String(col1));
-                values.insert("col3", Type::String(col3));
+                values.insert("col1".to_string(), Type::String(col1.to_string()));
+                values.insert("col3".to_string(), Type::String(col3.to_string()));
                 values
             })
             .map(|values| Event {
@@ -394,9 +394,9 @@ columns:
             .iter()
             .map(|(col1, col2, col3)| {
                 let mut values = HashMap::new();
-                values.insert("column1", Type::String(col1));
-                values.insert("column2", Type::String(col2));
-                values.insert("column3", Type::String(col3));
+                values.insert("column1".to_string(), Type::String(col1.to_string()));
+                values.insert("column2".to_string(), Type::String(col2.to_string()));
+                values.insert("column3".to_string(), Type::String(col3.to_string()));
                 values
             })
             .map(|values| Event {
@@ -438,8 +438,8 @@ columns:
             .iter()
             .map(|(col1, _, col3)| {
                 let mut values = HashMap::new();
-                values.insert("column1", Type::String(col1));
-                values.insert("column3", Type::String(col3));
+                values.insert("column1".to_string(), Type::String(col1.to_string()));
+                values.insert("column3".to_string(), Type::String(col3.to_string()));
                 values
             })
             .map(|values| Event {

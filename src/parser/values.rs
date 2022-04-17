@@ -2,8 +2,8 @@ use chrono::prelude::*;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
-pub enum Type<'a> {
-    String(&'a str),
+pub enum Type {
+    String(String),
     Int32(i32),
     Int64(i64),
     Bool(bool),
@@ -12,7 +12,7 @@ pub enum Type<'a> {
     DateTime(DateTime<Local>),
 }
 
-impl<'a> ToString for Type<'a> {
+impl ToString for Type {
     fn to_string(&self) -> String {
         match self {
             Type::String(x) => x.to_string(),
@@ -27,7 +27,7 @@ impl<'a> ToString for Type<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Event<'a> {
-    pub values: HashMap<&'a str, Type<'a>>,
-    pub extra_text: Option<Vec<&'a str>>,
+pub struct Event {
+    pub values: HashMap<String, Type>,
+    pub extra_text: Option<Vec<String>>,
 }

@@ -46,8 +46,8 @@ impl Parser {
                 // attempt to get extra lines only if multiline is enabled
                 if let Some(last) = parsed.last_mut() {
                     match last.extra_text.as_mut() {
-                        None => last.extra_text = Some(vec![line]),
-                        Some(extra_text) => extra_text.push(line),
+                        None => last.extra_text = Some(vec![line.to_string()]),
+                        Some(extra_text) => extra_text.push(line.to_string()),
                     }
                 }
             }
@@ -57,7 +57,7 @@ impl Parser {
     }
 
     /// Parse the capture groups into columns
-    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<Event<'a>> {
+    pub fn parse_line<'a>(&'a self, line: &'a str) -> Option<Event> {
         self.regex.captures(line).map(|captures| {
             let values = self
                 .schema
@@ -67,7 +67,7 @@ impl Parser {
                     let column_name = column.name.as_str();
                     let value = captures.name(column_name).unwrap().as_str();
                     let value = match column.r#type {
-                        ColumnType::String => Type::String(value),
+                        ColumnType::String => Type::String(value.to_string()),
                         ColumnType::Int32 => Type::Int32(i32::from_str(value).unwrap()),
                         ColumnType::Int64 => Type::Int64(i64::from_str(value).unwrap()),
                         ColumnType::Bool => Type::Bool(bool::from_str(value).unwrap()),
@@ -76,7 +76,7 @@ impl Parser {
                         ColumnType::DateTime => Type::DateTime(DateTime::from_str(value).unwrap()),
                     };
 
-                    (column_name, value)
+                    (column_name.to_string(), value)
                 })
                 .collect();
 
@@ -194,13 +194,16 @@ mod tests {
         let parsed_value = parser.parse_line(&line).unwrap();
 
         let mut expected_values = HashMap::new();
-        expected_values.insert("int_value", Type::Int32(int_value));
-        expected_values.insert("string_value", Type::String(string_value));
-        expected_values.insert("double_value", Type::Double(double_value));
-        expected_values.insert("long_value", Type::Int64(long_value));
-        expected_values.insert("bool_value", Type::Bool(bool_value));
-        expected_values.insert("float_value", Type::Float(float_value));
-        expected_values.insert("timestamp", Type::DateTime(timestamp));
+        expected_values.insert("int_value".to_string(), Type::Int32(int_value));
+        expected_values.insert(
+            "string_value".to_string(),
+            Type::String(string_value.to_string()),
+        );
+        expected_values.insert("double_value".to_string(), Type::Double(double_value));
+        expected_values.insert("long_value".to_string(), Type::Int64(long_value));
+        expected_values.insert("bool_value".to_string(), Type::Bool(bool_value));
+        expected_values.insert("float_value".to_string(), Type::Float(float_value));
+        expected_values.insert("timestamp".to_string(), Type::DateTime(timestamp));
 
         let expected = Event {
             values: expected_values,
@@ -245,13 +248,19 @@ mod tests {
         let parsed_result = parser.parse(line.lines());
 
         let mut expected_values = HashMap::new();
-        expected_values.insert("index", Type::Int32(1234));
-        expected_values.insert("string_value", Type::String("this is some string"));
-        expected_values.insert("double_value", Type::String("3.14159"));
+        expected_values.insert("index".to_string(), Type::Int32(1234));
+        expected_values.insert(
+            "string_value".to_string(),
+            Type::String("this is some string".to_string()),
+        );
+        expected_values.insert(
+            "double_value".to_string(),
+            Type::String("3.14159".to_string()),
+        );
 
         let expected = vec![Event {
             values: expected_values,
-            extra_text: Some(vec!["this is extra text"]),
+            extra_text: Some(vec!["this is extra text".to_string()]),
         }];
 
         assert_eq!(expected, parsed_result);
@@ -274,9 +283,15 @@ mod tests {
         let parsed_result = parser.parse(line.lines());
 
         let mut expected_values = HashMap::new();
-        expected_values.insert("index", Type::Int32(1234));
-        expected_values.insert("string_value", Type::String("this is some string"));
-        expected_values.insert("double_value", Type::String("3.14159"));
+        expected_values.insert("index".to_string(), Type::Int32(1234));
+        expected_values.insert(
+            "string_value".to_string(),
+            Type::String("this is some string".to_string()),
+        );
+        expected_values.insert(
+            "double_value".to_string(),
+            Type::String("3.14159".to_string()),
+        );
 
         let expected = vec![Event {
             values: expected_values,
