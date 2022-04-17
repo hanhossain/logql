@@ -12,6 +12,8 @@ pub enum Error {
     InvalidRegex(#[from] regex::Error),
     #[error("Schema failed to parse")]
     InvalidSchema(#[from] serde_yaml::Error),
+    #[error("The SQL was invalid.")]
+    InvalidSqlQuery,
     #[error(
     "All columns must correspond to named capture groups. Columns missing in capture groups: {0:?}"
     )]

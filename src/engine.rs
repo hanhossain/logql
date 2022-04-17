@@ -32,8 +32,10 @@ impl Engine {
     pub fn with_query(parser: Parser, query: String) -> Result<Engine, Error> {
         let dialect = GenericDialect {};
         let mut ast: Vec<Statement> = SqlParser::parse_sql(&dialect, query.as_str())?;
-        if ast.len() > 1 {
-            return Err(Error::TooManySqlQueries);
+        match ast.len() {
+            0 => return Err(Error::InvalidSqlQuery),
+            1 => (),
+            _ => return Err(Error::TooManySqlQueries),
         }
 
         let statement = ast.pop().unwrap();
@@ -273,6 +275,29 @@ columns:
             Error::SqlParserError(_) => {}
             x => panic!(
                 "Error should be Error::SqlParserError. Actual error {:?}",
+                x
+            ),
+        }
+    }
+
+    #[test]
+    fn create_with_empty_query() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let error = Engine::with_query(parser, "".to_string()).err().unwrap();
+        match error {
+            Error::InvalidSqlQuery => {}
+            x => panic!(
+                "Error should be Error::InvalidSqlQuery. Actual error {:?}",
                 x
             ),
         }
