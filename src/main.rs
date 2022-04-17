@@ -1,6 +1,7 @@
 use crate::engine::Engine;
 use crate::parser::Parser;
 use clap::Parser as ClapParser;
+use sqlparser::test_utils::table;
 
 mod engine;
 mod error;
@@ -15,6 +16,8 @@ struct Config {
     schema: String,
     #[clap(long)]
     sql: Option<String>,
+    #[clap(long)]
+    no_print: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -29,7 +32,9 @@ fn main() -> anyhow::Result<()> {
     }?;
 
     let table_result = engine.execute(source.lines())?;
-    let table = table_result.table();
-    println!("{}", table);
+    if !config.no_print {
+        let table = table_result.table();
+        println!("{}", table);
+    }
     Ok(())
 }
