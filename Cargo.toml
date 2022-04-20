@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.52"
+anyhow = "1.0.56"
 chrono = "0.4.19"
-clap = { version = "3.1.8", features = ["derive"] }
+clap = { version = "3.1.10", features = ["derive"] }
 comfy-table = "5.0.1"
-regex = "1.5.4"
-serde = { version = "1.0.133", features = ["derive"] }
+regex = "1.5.5"
+serde = { version = "1.0.136", features = ["derive"] }
 serde_yaml = "0.8.23"
 sqlparser = "0.16.0"
 thiserror = "1.0.30"
