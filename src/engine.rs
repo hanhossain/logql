@@ -3,7 +3,7 @@ use crate::parser::values::{Event, Type};
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
-use sqlparser::ast::{BinaryOperator, Expr, Offset, SelectItem, SetExpr, Statement, Value};
+use sqlparser::ast::{BinaryOperator, Expr, Ident, Offset, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
 use std::collections::HashMap;
@@ -119,34 +119,16 @@ impl TableResult {
         Ok(self)
     }
 
-    fn filter(mut self) -> Result<TableResult, Error> {
-        if let Some(statement) = &self.statement {
-            if let Statement::Query(query) = statement {
+    fn filter(self) -> Result<TableResult, Error> {
+        if let Some(statement) = self.statement.clone() {
+            if let Statement::Query(query) = &statement {
                 return match &query.body {
                     SetExpr::Select(select) => match &select.selection {
                         None => Ok(self),
                         Some(Expr::BinaryOp { left, op, right }) => match (&**left, op, &**right) {
-                            (Expr::Identifier(left), BinaryOperator::Eq, Expr::Value(right)) => {
-                                match right {
-                                    Value::SingleQuotedString(value) => {
-                                        // filter all events where column == value
-                                        let column = left.value.as_str();
-                                        self.events = self
-                                            .events
-                                            .into_iter()
-                                            .filter(|event| {
-                                                let column_type = event.values.get(column).unwrap();
-                                                if let Type::String(column_value) = column_type {
-                                                    column_value == value
-                                                } else {
-                                                    false
-                                                }
-                                            })
-                                            .collect();
-                                        Ok(self)
-                                    }
-                                    _ => Err(Error::InvalidQuery(statement.clone())),
-                                }
+                            (Expr::Identifier(column), BinaryOperator::Eq, Expr::Value(value))
+                            | (Expr::Value(value), BinaryOperator::Eq, Expr::Identifier(column)) => {
+                                self.filter_column_equals_value(column, value)
                             }
                             _ => Err(Error::InvalidQuery(statement.clone())),
                         },
@@ -158,6 +140,33 @@ impl TableResult {
         }
 
         Ok(self)
+    }
+
+    fn filter_column_equals_value(
+        mut self,
+        column: &Ident,
+        value: &Value,
+    ) -> Result<TableResult, Error> {
+        match value {
+            Value::SingleQuotedString(value) => {
+                // filter all events where column == value
+                let column = column.value.as_str();
+                self.events = self
+                    .events
+                    .into_iter()
+                    .filter(|event| {
+                        let column_type = event.values.get(column).unwrap();
+                        if let Type::String(column_value) = column_type {
+                            column_value == value
+                        } else {
+                            false
+                        }
+                    })
+                    .collect();
+                Ok(self)
+            }
+            _ => Err(Error::InvalidQuery(self.statement.unwrap().clone())),
+        }
     }
 
     fn project(mut self) -> Result<TableResult, Error> {
@@ -815,5 +824,65 @@ columns:
         );
 
         assert_eq!(table_result.events.len(), 0);
+    }
+
+    #[test]
+    fn sql_where_column_equals_rvalue() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 WHERE col2 = 'two'";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        let events = generate_events([[("col1", "2"), ("col2", "two")].as_slice()].as_slice());
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_where_column_equals_lvalue() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 WHERE 'two' = col2";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        let events = generate_events([[("col1", "2"), ("col2", "two")].as_slice()].as_slice());
+        assert_eq!(table_result.events, events);
     }
 }
