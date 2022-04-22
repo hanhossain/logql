@@ -1,3 +1,4 @@
+use crate::parser::values::Type;
 use crate::schema::ColumnType;
 use sqlparser::ast::Statement;
 use thiserror::Error;
@@ -24,4 +25,6 @@ pub enum Error {
     TooManyMultilineColumns(Vec<String>),
     #[error("There are too many SQL statements. The max allowed is one statement.")]
     TooManySqlQueries,
+    #[error("There was a type mismatch. Schema type = {0}. Value = {1:?}. Query: {2:?}")]
+    TypeMismatch(ColumnType, Type, Statement),
 }

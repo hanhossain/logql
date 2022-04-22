@@ -1,9 +1,10 @@
 use crate::error::Error;
 use crate::parser::values::{Event, Type};
 use crate::parser::Parser;
+use crate::schema::ColumnType;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
-use sqlparser::ast::{BinaryOperator, Expr, Ident, Offset, SelectItem, SetExpr, Statement, Value};
+use sqlparser::ast::{BinaryOperator, Expr, Offset, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
 use std::collections::HashMap;
@@ -128,7 +129,7 @@ impl TableResult {
                         Some(Expr::BinaryOp { left, op, right }) => match (&**left, op, &**right) {
                             (Expr::Identifier(column), BinaryOperator::Eq, Expr::Value(value))
                             | (Expr::Value(value), BinaryOperator::Eq, Expr::Identifier(column)) => {
-                                self.filter_column_equals_value(column, value)
+                                self.filter_column_equals_literal(column.value.as_str(), value)
                             }
                             _ => Err(Error::InvalidQuery(statement.clone())),
                         },
@@ -142,31 +143,46 @@ impl TableResult {
         Ok(self)
     }
 
-    fn filter_column_equals_value(
+    fn filter_column_equals_literal(
         mut self,
-        column: &Ident,
-        value: &Value,
+        column: &str,
+        literal: &Value,
     ) -> Result<TableResult, Error> {
-        match value {
-            Value::SingleQuotedString(value) => {
-                // filter all events where column == value
-                let column = column.value.as_str();
-                self.events = self
-                    .events
-                    .into_iter()
-                    .filter(|event| {
-                        let column_type = event.values.get(column).unwrap();
-                        if let Type::String(column_value) = column_type {
-                            column_value == value
-                        } else {
-                            false
-                        }
-                    })
-                    .collect();
-                Ok(self)
+        let schema_type = self
+            .parser
+            .schema
+            .columns
+            .iter()
+            .find(|c| c.name.eq_ignore_ascii_case(column))
+            .unwrap()
+            .r#type;
+
+        let events = self.events;
+        let mut filtered_events = Vec::new();
+
+        for event in events {
+            let event_type = event.values.get(column).unwrap();
+            let should_keep = match (schema_type, event_type, literal) {
+                (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
+                    value == literal
+                }
+                _ => {
+                    return Err(Error::TypeMismatch(
+                        schema_type,
+                        event_type.clone(),
+                        self.statement.unwrap().clone(),
+                    ))
+                }
+            };
+
+            if should_keep {
+                filtered_events.push(event);
             }
-            _ => Err(Error::InvalidQuery(self.statement.unwrap().clone())),
         }
+
+        self.events = filtered_events;
+
+        Ok(self)
     }
 
     fn project(mut self) -> Result<TableResult, Error> {
