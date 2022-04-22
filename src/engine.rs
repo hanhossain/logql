@@ -231,7 +231,9 @@ impl TableResult {
                             }
                         }
 
-                        self.columns = columns.unwrap();
+                        if let Some(columns) = columns {
+                            self.columns = columns;
+                        }
                         Ok(self)
                     }
                     _ => Err(Error::InvalidQuery(statement.clone())),
