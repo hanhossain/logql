@@ -1,9 +1,9 @@
 use crate::error::Error;
-use crate::parser::values::Event;
+use crate::parser::values::{Event, Type};
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
-use sqlparser::ast::{Expr, Offset, SelectItem, SetExpr, Statement, Value};
+use sqlparser::ast::{BinaryOperator, Expr, Offset, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
 use std::collections::HashMap;
@@ -75,7 +75,7 @@ impl TableResult {
     }
 
     fn process(self) -> Result<TableResult, Error> {
-        self.project()?.offset()?.limit()
+        self.filter()?.project()?.offset()?.limit()
     }
 
     fn offset(mut self) -> Result<TableResult, Error> {
@@ -108,6 +108,47 @@ impl TableResult {
                     Some(_) => return Err(Error::InvalidQuery(statement.clone())),
                     None => (),
                 }
+            }
+        }
+
+        Ok(self)
+    }
+
+    fn filter(mut self) -> Result<TableResult, Error> {
+        if let Some(statement) = &self.statement {
+            if let Statement::Query(query) = statement {
+                return match &query.body {
+                    SetExpr::Select(select) => match &select.selection {
+                        None => Ok(self),
+                        Some(Expr::BinaryOp { left, op, right }) => match (&**left, op, &**right) {
+                            (Expr::Identifier(left), BinaryOperator::Eq, Expr::Value(right)) => {
+                                match right {
+                                    Value::SingleQuotedString(value) => {
+                                        // filter all events where column == value
+                                        let column = left.value.as_str();
+                                        self.events = self
+                                            .events
+                                            .into_iter()
+                                            .filter(|event| {
+                                                let column_type = event.values.get(column).unwrap();
+                                                if let Type::String(column_value) = column_type {
+                                                    column_value == value
+                                                } else {
+                                                    false
+                                                }
+                                            })
+                                            .collect();
+                                        Ok(self)
+                                    }
+                                    _ => Err(Error::InvalidQuery(statement.clone())),
+                                }
+                            }
+                            _ => Err(Error::InvalidQuery(statement.clone())),
+                        },
+                        _ => Err(Error::InvalidQuery(statement.clone())),
+                    },
+                    _ => Err(Error::InvalidQuery(statement.clone())),
+                };
             }
         }
 
