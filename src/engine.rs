@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::parser::values::Event;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
+use serde::Serialize;
 use sqlparser::ast::{Expr, Offset, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
@@ -56,10 +57,13 @@ impl Engine {
     }
 }
 
+#[derive(Serialize)]
 pub struct TableResult {
     pub columns: Vec<String>,
     pub events: Vec<Event>,
+    #[serde(skip)]
     parser: Parser,
+    #[serde(skip)]
     statement: Option<Statement>,
 }
 
