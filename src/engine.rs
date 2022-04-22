@@ -103,7 +103,8 @@ impl TableResult {
                 match &query.limit {
                     Some(Expr::Value(Value::Number(limit, _))) => {
                         let limit = usize::from_str(limit.as_str()).unwrap();
-                        self.events = self.events[..limit].to_vec().clone();
+                        let end = limit.min(self.events.len());
+                        self.events = self.events[..end].to_vec().clone();
                     }
                     Some(_) => return Err(Error::InvalidQuery(statement.clone())),
                     None => (),
@@ -602,6 +603,43 @@ columns:
             [
                 [("col1", "1"), ("col2", "one")].as_slice(),
                 [("col1", "2"), ("col2", "two")].as_slice(),
+            ]
+            .as_slice(),
+        );
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_limit_greater_than_count() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 LIMIT 4";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        let events = generate_events(
+            [
+                [("col1", "1"), ("col2", "one")].as_slice(),
+                [("col1", "2"), ("col2", "two")].as_slice(),
+                [("col1", "3"), ("col2", "three")].as_slice(),
             ]
             .as_slice(),
         );
