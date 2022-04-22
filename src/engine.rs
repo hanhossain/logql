@@ -87,7 +87,11 @@ impl TableResult {
                         ..
                     }) => {
                         let offset = usize::from_str(offset.as_str()).unwrap();
-                        self.events = self.events[offset..].to_vec().clone();
+                        if offset > self.events.len() {
+                            self.events.clear();
+                        } else {
+                            self.events = self.events[offset..].to_vec().clone();
+                        }
                     }
                     Some(_) => return Err(Error::InvalidQuery(statement.clone())),
                     None => (),
@@ -647,6 +651,71 @@ columns:
     }
 
     #[test]
+    fn sql_offset() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 OFFSET 1";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        let events = generate_events(
+            [
+                [("col1", "2"), ("col2", "two")].as_slice(),
+                [("col1", "3"), ("col2", "three")].as_slice(),
+            ]
+            .as_slice(),
+        );
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_offset_greater_than_count() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 OFFSET 4";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        assert_eq!(table_result.events.len(), 0);
+    }
+
+    #[test]
     fn sql_limit_offset_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
@@ -717,5 +786,34 @@ columns:
             .as_slice(),
         );
         assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_limit_offset_greater_than_count() {
+        let schema = "\
+regex: (?P<col1>.+)\t(?P<col2>.+)
+table: logs
+columns:
+    - name: col1
+      type: string
+    - name: col2
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let query = "SELECT * FROM table1 LIMIT 2 OFFSET 3";
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+        assert_eq!(
+            table_result.columns,
+            vec!["col1".to_string(), "col2".to_string()]
+        );
+
+        assert_eq!(table_result.events.len(), 0);
     }
 }
