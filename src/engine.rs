@@ -166,6 +166,10 @@ impl TableResult {
                 (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
                     value == literal
                 }
+                (ColumnType::Int32, Type::Int32(value), Value::Number(literal, false)) => {
+                    let literal = i32::from_str(literal.as_str()).unwrap();
+                    *value == literal
+                }
                 _ => {
                     return Err(Error::TypeMismatch(
                         schema_type,
@@ -306,6 +310,19 @@ mod tests {
             .map(|values| Event {
                 values,
                 extra_text: None,
+            })
+            .collect()
+    }
+
+    fn generate_typed_events(source: Vec<Vec<(&str, Type)>>) -> Vec<Event> {
+        source
+            .into_iter()
+            .map(|row| {
+                let values = row.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+                Event {
+                    values,
+                    extra_text: None,
+                }
             })
             .collect()
     }
@@ -851,7 +868,7 @@ regex: (?P<col1>.+)\t(?P<col2>.+)
 table: logs
 columns:
     - name: col1
-      type: string
+      type: i32
     - name: col2
       type: string
 ";
@@ -862,16 +879,25 @@ columns:
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
-        let query = "SELECT * FROM table1 WHERE col2 = 'two'";
-        let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
-        assert_eq!(
-            table_result.columns,
-            vec!["col1".to_string(), "col2".to_string()]
-        );
 
-        let events = generate_events([[("col1", "2"), ("col2", "two")].as_slice()].as_slice());
-        assert_eq!(table_result.events, events);
+        let events = generate_typed_events(vec![vec![
+            ("col1", Type::Int32(2)),
+            ("col2", Type::String("two".to_string())),
+        ]]);
+        let columns = vec!["col1".to_string(), "col2".to_string()];
+
+        let queries = vec![
+            "SELECT * FROM table1 WHERE col2 = 'two'",
+            "SELECT * FROM table1 WHERE col1 = 2",
+        ];
+
+        for query in queries {
+            let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
+            let table_result = engine.execute(source.lines()).unwrap();
+
+            assert_eq!(table_result.columns, columns);
+            assert_eq!(table_result.events, events);
+        }
     }
 
     #[test]
@@ -881,7 +907,7 @@ regex: (?P<col1>.+)\t(?P<col2>.+)
 table: logs
 columns:
     - name: col1
-      type: string
+      type: i32
     - name: col2
       type: string
 ";
@@ -892,15 +918,24 @@ columns:
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
-        let query = "SELECT * FROM table1 WHERE 'two' = col2";
-        let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
-        assert_eq!(
-            table_result.columns,
-            vec!["col1".to_string(), "col2".to_string()]
-        );
 
-        let events = generate_events([[("col1", "2"), ("col2", "two")].as_slice()].as_slice());
-        assert_eq!(table_result.events, events);
+        let events = generate_typed_events(vec![vec![
+            ("col1", Type::Int32(2)),
+            ("col2", Type::String("two".to_string())),
+        ]]);
+        let columns = vec!["col1".to_string(), "col2".to_string()];
+
+        let queries = vec![
+            "SELECT * FROM table1 WHERE 'two' = col2",
+            "SELECT * FROM table1 WHERE 2 = col1",
+        ];
+
+        for query in queries {
+            let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
+            let table_result = engine.execute(source.lines()).unwrap();
+
+            assert_eq!(table_result.columns, columns);
+            assert_eq!(table_result.events, events);
+        }
     }
 }
