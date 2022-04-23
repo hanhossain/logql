@@ -170,6 +170,14 @@ impl TableResult {
                     let literal = i32::from_str(literal.as_str()).unwrap();
                     *value == literal
                 }
+                (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
+                    let literal = f32::from_str(literal.as_str()).unwrap();
+                    *value == literal
+                }
+                (ColumnType::Double, Type::Double(value), Value::Number(literal, false)) => {
+                    let literal = f64::from_str(literal.as_str()).unwrap();
+                    *value == literal
+                }
                 _ => {
                     return Err(Error::TypeMismatch(
                         schema_type,
@@ -862,20 +870,24 @@ columns:
     }
 
     #[test]
-    fn sql_where_column_equals_rvalue() {
+    fn sql_where_column_equals_literal() {
         let schema = "\
-regex: (?P<col1>.+)\t(?P<col2>.+)
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)\t(?P<col4>.+)
 table: logs
 columns:
     - name: col1
       type: i32
     - name: col2
       type: string
+    - name: col3
+      type: f32
+    - name: col4
+      type: f64
 ";
         let source = "\
-1\tone
-2\ttwo
-3\tthree
+1\tone\t1.0\t1.0
+2\ttwo\t2.5\t3.1
+3\tthree\t3.0\t1.0
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
@@ -883,51 +895,24 @@ columns:
         let events = generate_typed_events(vec![vec![
             ("col1", Type::Int32(2)),
             ("col2", Type::String("two".to_string())),
+            ("col3", Type::Float(2.5)),
+            ("col4", Type::Double(3.1)),
         ]]);
-        let columns = vec!["col1".to_string(), "col2".to_string()];
+        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4"]
+            .into_iter()
+            .map(|x| x.to_string())
+            .collect();
 
+        // TODO: i64, bool, datetime
         let queries = vec![
-            "SELECT * FROM table1 WHERE col2 = 'two'",
             "SELECT * FROM table1 WHERE col1 = 2",
-        ];
-
-        for query in queries {
-            let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
-
-            assert_eq!(table_result.columns, columns);
-            assert_eq!(table_result.events, events);
-        }
-    }
-
-    #[test]
-    fn sql_where_column_equals_lvalue() {
-        let schema = "\
-regex: (?P<col1>.+)\t(?P<col2>.+)
-table: logs
-columns:
-    - name: col1
-      type: i32
-    - name: col2
-      type: string
-";
-        let source = "\
-1\tone
-2\ttwo
-3\tthree
-";
-        let schema = Schema::try_from(schema).unwrap();
-        let parser = Parser::new(schema).unwrap();
-
-        let events = generate_typed_events(vec![vec![
-            ("col1", Type::Int32(2)),
-            ("col2", Type::String("two".to_string())),
-        ]]);
-        let columns = vec!["col1".to_string(), "col2".to_string()];
-
-        let queries = vec![
-            "SELECT * FROM table1 WHERE 'two' = col2",
             "SELECT * FROM table1 WHERE 2 = col1",
+            "SELECT * FROM table1 WHERE col2 = 'two'",
+            "SELECT * FROM table1 WHERE 'two' = col2",
+            "SELECT * FROM table1 WHERE col3 = 2.5",
+            "SELECT * FROM table1 WHERE 2.5 = col3",
+            "SELECT * FROM table1 WHERE col4 = 3.1",
+            "SELECT * FROM table1 WHERE 3.1 = col4",
         ];
 
         for query in queries {
