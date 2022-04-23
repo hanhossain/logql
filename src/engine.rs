@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::parser::values::{Event, Type};
 use crate::parser::Parser;
 use crate::schema::ColumnType;
+use chrono::prelude::*;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
 use sqlparser::ast::{BinaryOperator, Expr, Offset, SelectItem, SetExpr, Statement, Value};
@@ -183,6 +184,14 @@ impl TableResult {
                     *value == literal
                 }
                 (ColumnType::Bool, Type::Bool(value), Value::Boolean(literal)) => value == literal,
+                (
+                    ColumnType::DateTime,
+                    Type::DateTime(value),
+                    Value::SingleQuotedString(literal),
+                ) => {
+                    let literal: DateTime<Utc> = literal.parse().unwrap();
+                    *value == literal
+                }
                 _ => {
                     return Err(Error::TypeMismatch(
                         schema_type,
@@ -877,7 +886,13 @@ columns:
     #[test]
     fn sql_where_column_equals_literal() {
         let schema = "\
-regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)\t(?P<col4>.+)\t(?P<col5>.+)\t(?P<col6>.+)
+regex: (?P<col1>.+)\
+    \t(?P<col2>.+)\
+    \t(?P<col3>.+)\
+    \t(?P<col4>.+)\
+    \t(?P<col5>.+)\
+    \t(?P<col6>.+)\
+    \t(?P<col7>.+)
 table: logs
 columns:
     - name: col1
@@ -892,11 +907,13 @@ columns:
       type: i64
     - name: col6
       type: bool
+    - name: col7
+      type: datetime
 ";
         let source = "\
-1\tone\t1.0\t1.0\t1234\tfalse
-2\ttwo\t2.5\t3.1\t2147483647\ttrue
-3\tthree\t3.0\t1.0\t567\tfalse
+1\tone\t1.0\t1.0\t1234\tfalse\t2022-01-01T00:00:00Z
+2\ttwo\t2.5\t3.1\t2147483647\ttrue\t2022-01-02T00:00:00Z
+3\tthree\t3.0\t1.0\t567\tfalse\t2022-01-03T00:00:00Z
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
@@ -908,13 +925,13 @@ columns:
             ("col4", Type::Double(3.1)),
             ("col5", Type::Int64(2147483647)),
             ("col6", Type::Bool(true)),
+            ("col7", Type::DateTime(Utc.ymd(2022, 1, 2).and_hms(0, 0, 0))),
         ]]);
-        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4", "col5", "col6"]
+        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4", "col5", "col6", "col7"]
             .into_iter()
             .map(|x| x.to_string())
             .collect();
 
-        // TODO: datetime
         let queries = vec![
             "SELECT * FROM table1 WHERE col1 = 2",
             "SELECT * FROM table1 WHERE 2 = col1",
@@ -929,6 +946,10 @@ columns:
             "SELECT * FROM table1 WHERE 2147483647 = col5",
             "SELECT * FROM table1 WHERE col6 = true",
             "SELECT * FROM table1 WHERE true = col6",
+            "SELECT * FROM table1 WHERE col7 = '2022-01-02T00:00:00Z'",
+            "SELECT * FROM table1 WHERE '2022-01-02T00:00:00Z' = col7",
+            "SELECT * FROM table1 WHERE col7 = '2022-01-02T01:00:00+01:00'",
+            "SELECT * FROM table1 WHERE '2022-01-02T01:00:00+01:00' = col7",
         ];
 
         for query in queries {

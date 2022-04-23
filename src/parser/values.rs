@@ -10,7 +10,7 @@ pub enum Type {
     Bool(bool),
     Float(f32),
     Double(f64),
-    DateTime(DateTime<Local>),
+    DateTime(DateTime<Utc>),
 }
 
 impl ToString for Type {

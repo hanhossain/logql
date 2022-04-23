@@ -3,7 +3,7 @@ pub mod values;
 use crate::error::Error;
 use crate::parser::values::{Event, Type};
 use crate::schema::{ColumnType, Schema};
-use chrono::DateTime;
+use chrono::prelude::*;
 use regex::Regex;
 use std::collections::HashSet;
 use std::str::{FromStr, Lines};
@@ -121,7 +121,6 @@ impl TryFrom<&str> for Parser {
 mod tests {
     use super::*;
     use crate::schema::{Column, ColumnType};
-    use chrono::Local;
     use std::collections::HashMap;
 
     #[test]
@@ -184,7 +183,7 @@ mod tests {
         let long_value = i64::MAX;
         let bool_value = true;
         let float_value = 1.23;
-        let timestamp = Local::now();
+        let timestamp = Utc::now();
 
         let line = format!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}",
