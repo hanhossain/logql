@@ -170,6 +170,10 @@ impl TableResult {
                     let literal = i32::from_str(literal.as_str()).unwrap();
                     *value == literal
                 }
+                (ColumnType::Int64, Type::Int64(value), Value::Number(literal, false)) => {
+                    let literal = i64::from_str(literal.as_str()).unwrap();
+                    *value == literal
+                }
                 (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
                     let literal = f32::from_str(literal.as_str()).unwrap();
                     *value == literal
@@ -872,7 +876,7 @@ columns:
     #[test]
     fn sql_where_column_equals_literal() {
         let schema = "\
-regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)\t(?P<col4>.+)
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)\t(?P<col4>.+)\t(?P<col5>.+)
 table: logs
 columns:
     - name: col1
@@ -883,11 +887,13 @@ columns:
       type: f32
     - name: col4
       type: f64
+    - name: col5
+      type: i64
 ";
         let source = "\
-1\tone\t1.0\t1.0
-2\ttwo\t2.5\t3.1
-3\tthree\t3.0\t1.0
+1\tone\t1.0\t1.0\t1234
+2\ttwo\t2.5\t3.1\t2147483647
+3\tthree\t3.0\t1.0\t567
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
@@ -897,13 +903,14 @@ columns:
             ("col2", Type::String("two".to_string())),
             ("col3", Type::Float(2.5)),
             ("col4", Type::Double(3.1)),
+            ("col5", Type::Int64(2147483647)),
         ]]);
-        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4"]
+        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4", "col5"]
             .into_iter()
             .map(|x| x.to_string())
             .collect();
 
-        // TODO: i64, bool, datetime
+        // TODO: bool, datetime
         let queries = vec![
             "SELECT * FROM table1 WHERE col1 = 2",
             "SELECT * FROM table1 WHERE 2 = col1",
@@ -913,6 +920,9 @@ columns:
             "SELECT * FROM table1 WHERE 2.5 = col3",
             "SELECT * FROM table1 WHERE col4 = 3.1",
             "SELECT * FROM table1 WHERE 3.1 = col4",
+            "SELECT * FROM table1 WHERE 3.1 = col4",
+            "SELECT * FROM table1 WHERE col5 = 2147483647",
+            "SELECT * FROM table1 WHERE 2147483647 = col5",
         ];
 
         for query in queries {
