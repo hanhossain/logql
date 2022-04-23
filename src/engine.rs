@@ -182,6 +182,7 @@ impl TableResult {
                     let literal = f64::from_str(literal.as_str()).unwrap();
                     *value == literal
                 }
+                (ColumnType::Bool, Type::Bool(value), Value::Boolean(literal)) => value == literal,
                 _ => {
                     return Err(Error::TypeMismatch(
                         schema_type,
@@ -876,7 +877,7 @@ columns:
     #[test]
     fn sql_where_column_equals_literal() {
         let schema = "\
-regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)\t(?P<col4>.+)\t(?P<col5>.+)
+regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)\t(?P<col4>.+)\t(?P<col5>.+)\t(?P<col6>.+)
 table: logs
 columns:
     - name: col1
@@ -889,11 +890,13 @@ columns:
       type: f64
     - name: col5
       type: i64
+    - name: col6
+      type: bool
 ";
         let source = "\
-1\tone\t1.0\t1.0\t1234
-2\ttwo\t2.5\t3.1\t2147483647
-3\tthree\t3.0\t1.0\t567
+1\tone\t1.0\t1.0\t1234\tfalse
+2\ttwo\t2.5\t3.1\t2147483647\ttrue
+3\tthree\t3.0\t1.0\t567\tfalse
 ";
         let schema = Schema::try_from(schema).unwrap();
         let parser = Parser::new(schema).unwrap();
@@ -904,13 +907,14 @@ columns:
             ("col3", Type::Float(2.5)),
             ("col4", Type::Double(3.1)),
             ("col5", Type::Int64(2147483647)),
+            ("col6", Type::Bool(true)),
         ]]);
-        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4", "col5"]
+        let columns: Vec<_> = vec!["col1", "col2", "col3", "col4", "col5", "col6"]
             .into_iter()
             .map(|x| x.to_string())
             .collect();
 
-        // TODO: bool, datetime
+        // TODO: datetime
         let queries = vec![
             "SELECT * FROM table1 WHERE col1 = 2",
             "SELECT * FROM table1 WHERE 2 = col1",
@@ -923,6 +927,8 @@ columns:
             "SELECT * FROM table1 WHERE 3.1 = col4",
             "SELECT * FROM table1 WHERE col5 = 2147483647",
             "SELECT * FROM table1 WHERE 2147483647 = col5",
+            "SELECT * FROM table1 WHERE col6 = true",
+            "SELECT * FROM table1 WHERE true = col6",
         ];
 
         for query in queries {
