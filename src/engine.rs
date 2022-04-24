@@ -132,18 +132,25 @@ impl TableResult {
                             | (Expr::Value(value), BinaryOperator::Eq, Expr::Identifier(column)) => {
                                 self.filter_column_equals_literal(column.value.as_str(), value)
                             }
-                            (Expr::Identifier(column), BinaryOperator::Lt, Expr::Value(value)) => {
+                            (Expr::Identifier(column), BinaryOperator::Lt, Expr::Value(value))
+                            | (Expr::Value(value), BinaryOperator::Gt, Expr::Identifier(column)) => {
                                 self.filter_column_less_than_literal(column.value.as_str(), value)
                             }
                             (
                                 Expr::Identifier(column),
                                 BinaryOperator::LtEq,
                                 Expr::Value(value),
+                            )
+                            | (
+                                Expr::Value(value),
+                                BinaryOperator::GtEq,
+                                Expr::Identifier(column),
                             ) => self.filter_column_less_than_or_equal_to_literal(
                                 column.value.as_str(),
                                 value,
                             ),
-                            (Expr::Identifier(column), BinaryOperator::Gt, Expr::Value(value)) => {
+                            (Expr::Identifier(column), BinaryOperator::Gt, Expr::Value(value))
+                            | (Expr::Value(value), BinaryOperator::Lt, Expr::Identifier(column)) => {
                                 self.filter_column_greater_than_literal(
                                     column.value.as_str(),
                                     value,
@@ -153,6 +160,11 @@ impl TableResult {
                                 Expr::Identifier(column),
                                 BinaryOperator::GtEq,
                                 Expr::Value(value),
+                            )
+                            | (
+                                Expr::Value(value),
+                                BinaryOperator::LtEq,
+                                Expr::Identifier(column),
                             ) => self.filter_column_greater_than_or_equal_to_literal(
                                 column.value.as_str(),
                                 value,
@@ -1200,11 +1212,17 @@ columns:
 
         let queries = vec![
             "select * from logs where i32 < 2",
+            "select * from logs where 2 > i32",
             "select * from logs where i64 < 2000",
+            "select * from logs where 2000 > i64",
             "select * from logs where f32 < 2.2",
+            "select * from logs where 2.2 > f32",
             "select * from logs where f64 < 22.22",
+            "select * from logs where 22.22 > f64",
             "select * from logs where datetime < '2022-01-02T00:00:00Z'",
+            "select * from logs where '2022-01-02T00:00:00Z' > datetime",
             "select * from logs where string < 'b'",
+            "select * from logs where 'b' > string",
         ];
 
         for query in queries {
@@ -1270,11 +1288,17 @@ columns:
 
         let queries = vec![
             "select * from logs where i32 <= 2",
+            "select * from logs where 2 >= i32",
             "select * from logs where i64 <= 2000",
+            "select * from logs where 2000 >= i64",
             "select * from logs where f32 <= 2.2",
+            "select * from logs where 2.2 >= f32",
             "select * from logs where f64 <= 22.22",
+            "select * from logs where 22.22 >= f64",
             "select * from logs where datetime <= '2022-01-02T00:00:00Z'",
+            "select * from logs where '2022-01-02T00:00:00Z' >= datetime",
             "select * from logs where string <= 'b'",
+            "select * from logs where 'b' >= string",
         ];
 
         for query in queries {
@@ -1327,11 +1351,17 @@ columns:
 
         let queries = vec![
             "select * from logs where i32 > 2",
+            "select * from logs where 2 < i32",
             "select * from logs where i64 > 2000",
+            "select * from logs where 2000 < i64",
             "select * from logs where f32 > 2.2",
+            "select * from logs where 2.2 < f32",
             "select * from logs where f64 > 22.22",
+            "select * from logs where 22.22 < f64",
             "select * from logs where datetime > '2022-01-02T00:00:00Z'",
+            "select * from logs where '2022-01-02T00:00:00Z' < datetime",
             "select * from logs where string > 'b'",
+            "select * from logs where 'b' < string",
         ];
 
         for query in queries {
@@ -1397,11 +1427,17 @@ columns:
 
         let queries = vec![
             "select * from logs where i32 >= 2",
+            "select * from logs where 2 <= i32",
             "select * from logs where i64 >= 2000",
+            "select * from logs where 2000 <= i64",
             "select * from logs where f32 >= 2.2",
+            "select * from logs where 2.2 <= f32",
             "select * from logs where f64 >= 22.22",
+            "select * from logs where 22.22 <= f64",
             "select * from logs where datetime >= '2022-01-02T00:00:00Z'",
+            "select * from logs where '2022-01-02T00:00:00Z' <= datetime",
             "select * from logs where string >= 'b'",
+            "select * from logs where 'b' <= string",
         ];
 
         for query in queries {
