@@ -233,6 +233,29 @@ impl TableResult {
                     let literal = i32::from_str(literal.as_str()).unwrap();
                     *value < literal
                 }
+                (ColumnType::Int64, Type::Int64(value), Value::Number(literal, false)) => {
+                    let literal = i64::from_str(literal.as_str()).unwrap();
+                    *value < literal
+                }
+                (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
+                    let literal = f32::from_str(literal.as_str()).unwrap();
+                    *value < literal
+                }
+                (ColumnType::Double, Type::Double(value), Value::Number(literal, false)) => {
+                    let literal = f64::from_str(literal.as_str()).unwrap();
+                    *value < literal
+                }
+                (
+                    ColumnType::DateTime,
+                    Type::DateTime(value),
+                    Value::SingleQuotedString(literal),
+                ) => {
+                    let literal: DateTime<Utc> = literal.parse().unwrap();
+                    *value < literal
+                }
+                (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
+                    value < literal
+                }
                 _ => {
                     return Err(Error::TypeMismatch(
                         schema_type,
@@ -1004,18 +1027,26 @@ columns:
     #[test]
     fn sql_where_column_less_than_literal() {
         let schema = "\
-regex: (?P<i32>.+)\t(?P<string>.+)
+regex: (?P<i32>.+)\t(?P<string>.+)\t(?P<i64>.+)\t(?P<f32>.+)\t(?P<f64>.+)\t(?P<datetime>.+)
 table: logs
 columns:
     - name: i32
       type: i32
     - name: string
       type: string
+    - name: i64
+      type: i64
+    - name: f32
+      type: f32
+    - name: f64
+      type: f64
+    - name: datetime
+      type: datetime
 ";
         let source = "\
-1\tone
-2\ttwo
-3\tthree
+1\ta\t1000\t1.1\t11.11\t2022-01-01T00:00:00Z
+2\tb\t2000\t2.2\t22.22\t2022-01-02T00:00:00Z
+3\tc\t3000\t3.3\t33.33\t2022-01-03T00:00:00Z
 ";
 
         let schema = Schema::try_from(schema).unwrap();
@@ -1023,10 +1054,24 @@ columns:
 
         let events = generate_typed_events(vec![vec![
             ("i32", Type::Int32(1)),
-            ("string", Type::String("one".to_string())),
+            ("string", Type::String("a".to_string())),
+            ("i64", Type::Int64(1000)),
+            ("f32", Type::Float(1.1)),
+            ("f64", Type::Double(11.11)),
+            (
+                "datetime",
+                Type::DateTime(Utc.ymd(2022, 1, 1).and_hms(0, 0, 0)),
+            ),
         ]]);
 
-        let queries = vec!["select * from logs where i32 < 2"];
+        let queries = vec![
+            "select * from logs where i32 < 2",
+            "select * from logs where i64 < 2000",
+            "select * from logs where f32 < 2.2",
+            "select * from logs where f64 < 22.22",
+            "select * from logs where datetime < '2022-01-01T12:00:00Z'",
+            "select * from logs where string < 'b'",
+        ];
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
