@@ -158,10 +158,11 @@ impl TableResult {
             .r#type
     }
 
-    fn filter_column_equals_literal(
+    fn filter_column_with_literal<T: Fn(ColumnType, &Type, &Value) -> Result<bool, Error>>(
         mut self,
         column: &str,
         literal: &Value,
+        filter: T,
     ) -> Result<TableResult, Error> {
         let schema_type = self.get_schema_type_for_column(column);
         let events = self.events;
@@ -169,109 +170,97 @@ impl TableResult {
 
         for event in events {
             let event_type = event.values.get(column).unwrap();
-            let should_keep = match (schema_type, event_type, literal) {
-                (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
-                    value == literal
-                }
-                (ColumnType::Int32, Type::Int32(value), Value::Number(literal, false)) => {
-                    let literal = i32::from_str(literal.as_str()).unwrap();
-                    *value == literal
-                }
-                (ColumnType::Int64, Type::Int64(value), Value::Number(literal, false)) => {
-                    let literal = i64::from_str(literal.as_str()).unwrap();
-                    *value == literal
-                }
-                (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
-                    let literal = f32::from_str(literal.as_str()).unwrap();
-                    *value == literal
-                }
-                (ColumnType::Double, Type::Double(value), Value::Number(literal, false)) => {
-                    let literal = f64::from_str(literal.as_str()).unwrap();
-                    *value == literal
-                }
-                (ColumnType::Bool, Type::Bool(value), Value::Boolean(literal)) => value == literal,
-                (
-                    ColumnType::DateTime,
-                    Type::DateTime(value),
-                    Value::SingleQuotedString(literal),
-                ) => {
-                    let literal: DateTime<Utc> = literal.parse().unwrap();
-                    *value == literal
-                }
-                _ => {
-                    return Err(Error::TypeMismatch(
-                        schema_type,
-                        event_type.clone(),
-                        self.statement.unwrap().clone(),
-                    ))
-                }
-            };
-
+            let should_keep = filter(schema_type, event_type, literal)?;
             if should_keep {
                 filtered_events.push(event);
             }
         }
 
         self.events = filtered_events;
-
         Ok(self)
     }
 
-    fn filter_column_less_than_literal(
-        mut self,
+    fn filter_column_equals_literal(
+        self,
         column: &str,
         literal: &Value,
     ) -> Result<TableResult, Error> {
-        let schema_type = self.get_schema_type_for_column(column);
-        let events = self.events;
-        let mut filtered_events = Vec::new();
-
-        for event in events {
-            let event_type = event.values.get(column).unwrap();
-            let should_keep = match (schema_type, event_type, literal) {
-                (ColumnType::Int32, Type::Int32(value), Value::Number(literal, false)) => {
-                    let literal = i32::from_str(literal.as_str()).unwrap();
-                    *value < literal
-                }
-                (ColumnType::Int64, Type::Int64(value), Value::Number(literal, false)) => {
-                    let literal = i64::from_str(literal.as_str()).unwrap();
-                    *value < literal
-                }
-                (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
-                    let literal = f32::from_str(literal.as_str()).unwrap();
-                    *value < literal
-                }
-                (ColumnType::Double, Type::Double(value), Value::Number(literal, false)) => {
-                    let literal = f64::from_str(literal.as_str()).unwrap();
-                    *value < literal
-                }
-                (
-                    ColumnType::DateTime,
-                    Type::DateTime(value),
-                    Value::SingleQuotedString(literal),
-                ) => {
-                    let literal: DateTime<Utc> = literal.parse().unwrap();
-                    *value < literal
-                }
-                (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
-                    value < literal
-                }
-                _ => {
-                    return Err(Error::TypeMismatch(
-                        schema_type,
-                        event_type.clone(),
-                        self.statement.unwrap().clone(),
-                    ))
-                }
-            };
-
-            if should_keep {
-                filtered_events.push(event);
+        self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
+            schema_type,
+            event_type,
+            literal,
+        ) {
+            (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
+                Ok(value == literal)
             }
-        }
+            (ColumnType::Int32, Type::Int32(value), Value::Number(literal, false)) => {
+                let literal = i32::from_str(literal.as_str()).unwrap();
+                Ok(*value == literal)
+            }
+            (ColumnType::Int64, Type::Int64(value), Value::Number(literal, false)) => {
+                let literal = i64::from_str(literal.as_str()).unwrap();
+                Ok(*value == literal)
+            }
+            (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
+                let literal = f32::from_str(literal.as_str()).unwrap();
+                Ok(*value == literal)
+            }
+            (ColumnType::Double, Type::Double(value), Value::Number(literal, false)) => {
+                let literal = f64::from_str(literal.as_str()).unwrap();
+                Ok(*value == literal)
+            }
+            (ColumnType::Bool, Type::Bool(value), Value::Boolean(literal)) => Ok(value == literal),
+            (ColumnType::DateTime, Type::DateTime(value), Value::SingleQuotedString(literal)) => {
+                let literal: DateTime<Utc> = literal.parse().unwrap();
+                Ok(*value == literal)
+            }
+            _ => Err(Error::TypeMismatch(
+                schema_type,
+                event_type.clone(),
+                literal.clone(),
+            )),
+        })
+    }
 
-        self.events = filtered_events;
-        Ok(self)
+    fn filter_column_less_than_literal(
+        self,
+        column: &str,
+        literal: &Value,
+    ) -> Result<TableResult, Error> {
+        self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
+            schema_type,
+            event_type,
+            literal,
+        ) {
+            (ColumnType::Int32, Type::Int32(value), Value::Number(literal, false)) => {
+                let literal = i32::from_str(literal.as_str()).unwrap();
+                Ok(*value < literal)
+            }
+            (ColumnType::Int64, Type::Int64(value), Value::Number(literal, false)) => {
+                let literal = i64::from_str(literal.as_str()).unwrap();
+                Ok(*value < literal)
+            }
+            (ColumnType::Float, Type::Float(value), Value::Number(literal, false)) => {
+                let literal = f32::from_str(literal.as_str()).unwrap();
+                Ok(*value < literal)
+            }
+            (ColumnType::Double, Type::Double(value), Value::Number(literal, false)) => {
+                let literal = f64::from_str(literal.as_str()).unwrap();
+                Ok(*value < literal)
+            }
+            (ColumnType::DateTime, Type::DateTime(value), Value::SingleQuotedString(literal)) => {
+                let literal: DateTime<Utc> = literal.parse().unwrap();
+                Ok(*value < literal)
+            }
+            (ColumnType::String, Type::String(value), Value::SingleQuotedString(literal)) => {
+                Ok(value < literal)
+            }
+            _ => Err(Error::TypeMismatch(
+                schema_type,
+                event_type.clone(),
+                literal.clone(),
+            )),
+        })
     }
 
     fn project(mut self) -> Result<TableResult, Error> {
