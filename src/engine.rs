@@ -127,48 +127,19 @@ impl TableResult {
                 return match &query.body {
                     SetExpr::Select(select) => match &select.selection {
                         None => Ok(self),
-                        Some(Expr::BinaryOp { left, op, right }) => match (&**left, op, &**right) {
-                            (Expr::Identifier(column), BinaryOperator::Eq, Expr::Value(value))
-                            | (Expr::Value(value), BinaryOperator::Eq, Expr::Identifier(column)) => {
-                                self.filter_column_equals_literal(column.value.as_str(), value)
-                            }
-                            (Expr::Identifier(column), BinaryOperator::Lt, Expr::Value(value))
-                            | (Expr::Value(value), BinaryOperator::Gt, Expr::Identifier(column)) => {
-                                self.filter_column_less_than_literal(column.value.as_str(), value)
-                            }
-                            (
-                                Expr::Identifier(column),
-                                BinaryOperator::LtEq,
-                                Expr::Value(value),
-                            )
-                            | (
-                                Expr::Value(value),
-                                BinaryOperator::GtEq,
-                                Expr::Identifier(column),
-                            ) => self.filter_column_less_than_or_equal_to_literal(
-                                column.value.as_str(),
-                                value,
-                            ),
-                            (Expr::Identifier(column), BinaryOperator::Gt, Expr::Value(value))
-                            | (Expr::Value(value), BinaryOperator::Lt, Expr::Identifier(column)) => {
-                                self.filter_column_greater_than_literal(
+                        Some(Expr::BinaryOp { left, op, right }) => match (&**left, &**right) {
+                            (Expr::Identifier(column), Expr::Value(literal)) => self
+                                .route_filter_column_with_literal(
                                     column.value.as_str(),
-                                    value,
-                                )
-                            }
-                            (
-                                Expr::Identifier(column),
-                                BinaryOperator::GtEq,
-                                Expr::Value(value),
-                            )
-                            | (
-                                Expr::Value(value),
-                                BinaryOperator::LtEq,
-                                Expr::Identifier(column),
-                            ) => self.filter_column_greater_than_or_equal_to_literal(
-                                column.value.as_str(),
-                                value,
-                            ),
+                                    literal,
+                                    op,
+                                ),
+                            (Expr::Value(literal), Expr::Identifier(column)) => self
+                                .route_filter_literal_with_column(
+                                    literal,
+                                    column.value.as_str(),
+                                    op,
+                                ),
                             _ => Err(Error::InvalidQuery(statement.clone())),
                         },
                         _ => Err(Error::InvalidQuery(statement.clone())),
@@ -179,6 +150,46 @@ impl TableResult {
         }
 
         Ok(self)
+    }
+
+    fn route_filter_column_with_literal(
+        self,
+        column: &str,
+        literal: &Value,
+        op: &BinaryOperator,
+    ) -> Result<TableResult, Error> {
+        match op {
+            BinaryOperator::Eq => self.filter_column_equals_literal(column, literal),
+            BinaryOperator::Gt => self.filter_column_greater_than_literal(column, literal),
+            BinaryOperator::Lt => self.filter_column_less_than_literal(column, literal),
+            BinaryOperator::GtEq => {
+                self.filter_column_greater_than_or_equal_to_literal(column, literal)
+            }
+            BinaryOperator::LtEq => {
+                self.filter_column_less_than_or_equal_to_literal(column, literal)
+            }
+            _ => Err(Error::InvalidQuery(self.statement.unwrap().clone())),
+        }
+    }
+
+    fn route_filter_literal_with_column(
+        self,
+        literal: &Value,
+        column: &str,
+        op: &BinaryOperator,
+    ) -> Result<TableResult, Error> {
+        match op {
+            BinaryOperator::Eq => self.filter_column_equals_literal(column, literal),
+            BinaryOperator::Gt => self.filter_column_less_than_literal(column, literal),
+            BinaryOperator::Lt => self.filter_column_greater_than_literal(column, literal),
+            BinaryOperator::GtEq => {
+                self.filter_column_less_than_or_equal_to_literal(column, literal)
+            }
+            BinaryOperator::LtEq => {
+                self.filter_column_greater_than_or_equal_to_literal(column, literal)
+            }
+            _ => Err(Error::InvalidQuery(self.statement.unwrap().clone())),
+        }
     }
 
     fn get_schema_type_for_column(&self, column: &str) -> ColumnType {
