@@ -132,6 +132,9 @@ impl TableResult {
                             | (Expr::Value(value), BinaryOperator::Eq, Expr::Identifier(column)) => {
                                 self.filter_column_equals_literal(column.value.as_str(), value)
                             }
+                            (Expr::Identifier(column), BinaryOperator::Lt, Expr::Value(value)) => {
+                                self.filter_column_less_than_literal(column.value.as_str(), value)
+                            }
                             _ => Err(Error::InvalidQuery(statement.clone())),
                         },
                         _ => Err(Error::InvalidQuery(statement.clone())),
@@ -144,20 +147,23 @@ impl TableResult {
         Ok(self)
     }
 
-    fn filter_column_equals_literal(
-        mut self,
-        column: &str,
-        literal: &Value,
-    ) -> Result<TableResult, Error> {
-        let schema_type = self
-            .parser
+    fn get_schema_type_for_column(&self, column: &str) -> ColumnType {
+        // TODO: this can easily be simplified so we don't have to do a linear search every time
+        self.parser
             .schema
             .columns
             .iter()
             .find(|c| c.name.eq_ignore_ascii_case(column))
             .unwrap()
-            .r#type;
+            .r#type
+    }
 
+    fn filter_column_equals_literal(
+        mut self,
+        column: &str,
+        literal: &Value,
+    ) -> Result<TableResult, Error> {
+        let schema_type = self.get_schema_type_for_column(column);
         let events = self.events;
         let mut filtered_events = Vec::new();
 
@@ -208,6 +214,40 @@ impl TableResult {
 
         self.events = filtered_events;
 
+        Ok(self)
+    }
+
+    fn filter_column_less_than_literal(
+        mut self,
+        column: &str,
+        literal: &Value,
+    ) -> Result<TableResult, Error> {
+        let schema_type = self.get_schema_type_for_column(column);
+        let events = self.events;
+        let mut filtered_events = Vec::new();
+
+        for event in events {
+            let event_type = event.values.get(column).unwrap();
+            let should_keep = match (schema_type, event_type, literal) {
+                (ColumnType::Int32, Type::Int32(value), Value::Number(literal, false)) => {
+                    let literal = i32::from_str(literal.as_str()).unwrap();
+                    *value < literal
+                }
+                _ => {
+                    return Err(Error::TypeMismatch(
+                        schema_type,
+                        event_type.clone(),
+                        self.statement.unwrap().clone(),
+                    ))
+                }
+            };
+
+            if should_keep {
+                filtered_events.push(event);
+            }
+        }
+
+        self.events = filtered_events;
         Ok(self)
     }
 
@@ -957,6 +997,41 @@ columns:
             let table_result = engine.execute(source.lines()).unwrap();
 
             assert_eq!(table_result.columns, columns);
+            assert_eq!(table_result.events, events);
+        }
+    }
+
+    #[test]
+    fn sql_where_column_less_than_literal() {
+        let schema = "\
+regex: (?P<i32>.+)\t(?P<string>.+)
+table: logs
+columns:
+    - name: i32
+      type: i32
+    - name: string
+      type: string
+";
+        let source = "\
+1\tone
+2\ttwo
+3\tthree
+";
+
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+
+        let events = generate_typed_events(vec![vec![
+            ("i32", Type::Int32(1)),
+            ("string", Type::String("one".to_string())),
+        ]]);
+
+        let queries = vec!["select * from logs where i32 < 2"];
+
+        for query in queries {
+            let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
+            let table_result = engine.execute(source.lines()).unwrap();
+
             assert_eq!(table_result.events, events);
         }
     }
