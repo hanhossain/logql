@@ -60,6 +60,26 @@ impl TableResult {
             (Expr::Value(literal), Expr::Identifier(column)) => {
                 self.route_filter_literal_with_column(literal, column.value.as_str(), op)
             }
+            (
+                Expr::BinaryOp {
+                    left: left1,
+                    op: op1,
+                    right: right1,
+                },
+                Expr::BinaryOp {
+                    left: left2,
+                    op: op2,
+                    right: right2,
+                },
+            ) => {
+                let result1 = self.filter_binary_op(left1, op1, right1, statement)?;
+                let result2 = self.filter_binary_op(left2, op2, right2, statement)?;
+                match op {
+                    BinaryOperator::And => Ok(result1.intersection(&result2).map(|i| *i).collect()),
+                    BinaryOperator::Or => Ok(result1.union(&result2).map(|i| *i).collect()),
+                    _ => Err(Error::InvalidQuery(statement.clone())),
+                }
+            }
             _ => Err(Error::InvalidQuery(statement.clone())),
         }
     }
@@ -837,5 +857,75 @@ columns:
 
             assert_eq!(table_result.events, events);
         }
+    }
+
+    #[test]
+    fn sql_where_multiple_clauses_has_and() {
+        let schema = "\
+regex: (?P<i32>.+)\t(?P<string>.+)
+table: logs
+columns:
+    - name: i32
+      type: i32
+    - name: string
+      type: string
+";
+        let source = "\
+1\ta
+1\tb
+2\ta
+";
+
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+
+        let events = generate_typed_events(vec![vec![
+            ("i32", Type::Int32(1)),
+            ("string", Type::String("a".to_string())),
+        ]]);
+
+        let query = "select * from logs where i32 = 1 and string = 'a'";
+        let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+
+        assert_eq!(table_result.events, events);
+    }
+
+    #[test]
+    fn sql_where_multiple_clauses_has_or() {
+        let schema = "\
+regex: (?P<i32>.+)\t(?P<string>.+)
+table: logs
+columns:
+    - name: i32
+      type: i32
+    - name: string
+      type: string
+";
+        let source = "\
+1\ta
+2\tb
+3\tc
+";
+
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+
+        let events = generate_typed_events(vec![
+            vec![
+                ("i32", Type::Int32(1)),
+                ("string", Type::String("a".to_string())),
+            ],
+            vec![
+                ("i32", Type::Int32(2)),
+                ("string", Type::String("b".to_string())),
+            ],
+        ]);
+
+        let query = "select * from logs where i32 = 1 or string = 'b'";
+        let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+
+        assert_eq!(table_result.events, events);
     }
 }
