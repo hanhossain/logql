@@ -7,14 +7,15 @@ use sqlparser::ast::{BinaryOperator, Expr, SetExpr, Statement, Value};
 use std::str::FromStr;
 
 impl TableResult {
-    pub fn filter(self) -> Result<TableResult, Error> {
+    pub fn filter(mut self) -> Result<TableResult, Error> {
         if let Some(statement) = self.statement.clone() {
             if let Statement::Query(query) = &statement {
                 return match &query.body {
                     SetExpr::Select(select) => match &select.selection {
                         None => Ok(self),
                         Some(Expr::BinaryOp { left, op, right }) => {
-                            self.filter_binary_op(left, op, right, &statement)
+                            self.filter_binary_op(left, op, right, &statement)?;
+                            Ok(self)
                         }
                         _ => Err(Error::InvalidQuery(statement.clone())),
                     },
@@ -27,12 +28,12 @@ impl TableResult {
     }
 
     fn filter_binary_op(
-        self,
+        &mut self,
         left: &Box<Expr>,
         op: &BinaryOperator,
         right: &Box<Expr>,
         statement: &Statement,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         match (&**left, &**right) {
             (Expr::Identifier(column), Expr::Value(literal)) => {
                 self.route_filter_column_with_literal(column.value.as_str(), literal, op)
@@ -45,11 +46,11 @@ impl TableResult {
     }
 
     fn route_filter_column_with_literal(
-        self,
+        &mut self,
         column: &str,
         literal: &Value,
         op: &BinaryOperator,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         match op {
             BinaryOperator::Eq => self.filter_column_equals_literal(column, literal),
             BinaryOperator::NotEq => self.filter_column_does_not_equal_literal(column, literal),
@@ -61,16 +62,18 @@ impl TableResult {
             BinaryOperator::LtEq => {
                 self.filter_column_less_than_or_equal_to_literal(column, literal)
             }
-            _ => Err(Error::InvalidQuery(self.statement.unwrap().clone())),
+            _ => Err(Error::InvalidQuery(
+                self.statement.as_ref().unwrap().clone(),
+            )),
         }
     }
 
     fn route_filter_literal_with_column(
-        self,
+        &mut self,
         literal: &Value,
         column: &str,
         op: &BinaryOperator,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         match op {
             BinaryOperator::Eq => self.filter_column_equals_literal(column, literal),
             BinaryOperator::NotEq => self.filter_column_does_not_equal_literal(column, literal),
@@ -82,7 +85,9 @@ impl TableResult {
             BinaryOperator::LtEq => {
                 self.filter_column_greater_than_or_equal_to_literal(column, literal)
             }
-            _ => Err(Error::InvalidQuery(self.statement.unwrap().clone())),
+            _ => Err(Error::InvalidQuery(
+                self.statement.as_ref().unwrap().clone(),
+            )),
         }
     }
 
@@ -98,13 +103,13 @@ impl TableResult {
     }
 
     fn filter_column_with_literal<T: Fn(ColumnType, &Type, &Value) -> Result<bool, Error>>(
-        mut self,
+        &mut self,
         column: &str,
         literal: &Value,
         filter: T,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         let schema_type = self.get_schema_type_for_column(column);
-        let events = self.events;
+        let events = std::mem::replace(&mut self.events, Vec::new());
         let mut filtered_events = Vec::new();
 
         for event in events {
@@ -116,14 +121,10 @@ impl TableResult {
         }
 
         self.events = filtered_events;
-        Ok(self)
+        Ok(())
     }
 
-    fn filter_column_equals_literal(
-        self,
-        column: &str,
-        literal: &Value,
-    ) -> Result<TableResult, Error> {
+    fn filter_column_equals_literal(&mut self, column: &str, literal: &Value) -> Result<(), Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -162,10 +163,10 @@ impl TableResult {
     }
 
     fn filter_column_does_not_equal_literal(
-        self,
+        &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -204,10 +205,10 @@ impl TableResult {
     }
 
     fn filter_column_less_than_literal(
-        self,
+        &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -245,10 +246,10 @@ impl TableResult {
     }
 
     fn filter_column_greater_than_literal(
-        self,
+        &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -286,10 +287,10 @@ impl TableResult {
     }
 
     fn filter_column_less_than_or_equal_to_literal(
-        self,
+        &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -327,10 +328,10 @@ impl TableResult {
     }
 
     fn filter_column_greater_than_or_equal_to_literal(
-        self,
+        &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<TableResult, Error> {
+    ) -> Result<(), Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
