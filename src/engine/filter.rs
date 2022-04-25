@@ -38,7 +38,7 @@ impl TableResult {
         Ok(self)
     }
 
-    pub fn route_filter_column_with_literal(
+    fn route_filter_column_with_literal(
         self,
         column: &str,
         literal: &Value,
@@ -59,7 +59,7 @@ impl TableResult {
         }
     }
 
-    pub fn route_filter_literal_with_column(
+    fn route_filter_literal_with_column(
         self,
         literal: &Value,
         column: &str,
@@ -80,7 +80,7 @@ impl TableResult {
         }
     }
 
-    pub fn get_schema_type_for_column(&self, column: &str) -> ColumnType {
+    fn get_schema_type_for_column(&self, column: &str) -> ColumnType {
         // TODO: this can easily be simplified so we don't have to do a linear search every time
         self.parser
             .schema
@@ -91,7 +91,7 @@ impl TableResult {
             .r#type
     }
 
-    pub fn filter_column_with_literal<T: Fn(ColumnType, &Type, &Value) -> Result<bool, Error>>(
+    fn filter_column_with_literal<T: Fn(ColumnType, &Type, &Value) -> Result<bool, Error>>(
         mut self,
         column: &str,
         literal: &Value,
@@ -113,7 +113,7 @@ impl TableResult {
         Ok(self)
     }
 
-    pub fn filter_column_equals_literal(
+    fn filter_column_equals_literal(
         self,
         column: &str,
         literal: &Value,
@@ -155,7 +155,7 @@ impl TableResult {
         })
     }
 
-    pub fn filter_column_does_not_equal_literal(
+    fn filter_column_does_not_equal_literal(
         self,
         column: &str,
         literal: &Value,
@@ -197,7 +197,7 @@ impl TableResult {
         })
     }
 
-    pub fn filter_column_less_than_literal(
+    fn filter_column_less_than_literal(
         self,
         column: &str,
         literal: &Value,
@@ -238,7 +238,7 @@ impl TableResult {
         })
     }
 
-    pub fn filter_column_greater_than_literal(
+    fn filter_column_greater_than_literal(
         self,
         column: &str,
         literal: &Value,
@@ -279,7 +279,7 @@ impl TableResult {
         })
     }
 
-    pub fn filter_column_less_than_or_equal_to_literal(
+    fn filter_column_less_than_or_equal_to_literal(
         self,
         column: &str,
         literal: &Value,
@@ -320,7 +320,7 @@ impl TableResult {
         })
     }
 
-    pub fn filter_column_greater_than_or_equal_to_literal(
+    fn filter_column_greater_than_or_equal_to_literal(
         self,
         column: &str,
         literal: &Value,
