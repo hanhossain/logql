@@ -4,27 +4,46 @@ use crate::parser::values::Type;
 use crate::schema::ColumnType;
 use chrono::{DateTime, Utc};
 use sqlparser::ast::{BinaryOperator, Expr, SetExpr, Statement, Value};
+use std::collections::HashSet;
 use std::str::FromStr;
 
 impl TableResult {
     pub fn filter(mut self) -> Result<TableResult, Error> {
         if let Some(statement) = self.statement.clone() {
-            if let Statement::Query(query) = &statement {
-                return match &query.body {
+            let indexes: Option<HashSet<_>> = match &statement {
+                Statement::Query(query) => match &query.body {
                     SetExpr::Select(select) => match &select.selection {
-                        None => Ok(self),
-                        Some(Expr::BinaryOp { left, op, right }) => {
-                            self.filter_binary_op(left, op, right, &statement)?;
-                            Ok(self)
-                        }
-                        _ => Err(Error::InvalidQuery(statement.clone())),
+                        None => Ok(None),
+                        Some(expr) => Ok(Some(self.process_filter(&expr, &statement)?)),
                     },
                     _ => Err(Error::InvalidQuery(statement.clone())),
-                };
+                },
+                _ => Err(Error::InvalidQuery(statement)),
+            }?;
+
+            if let Some(indexes) = indexes {
+                let events = std::mem::replace(&mut self.events, Vec::new());
+                self.events = events
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(index, _)| indexes.contains(index))
+                    .map(|(_, event)| event)
+                    .collect();
             }
         }
 
         Ok(self)
+    }
+
+    fn process_filter(
+        &mut self,
+        expr: &Expr,
+        statement: &Statement,
+    ) -> Result<HashSet<usize>, Error> {
+        match expr {
+            Expr::BinaryOp { left, op, right } => self.filter_binary_op(left, op, right, statement),
+            _ => Err(Error::InvalidQuery(statement.clone())),
+        }
     }
 
     fn filter_binary_op(
@@ -33,7 +52,7 @@ impl TableResult {
         op: &BinaryOperator,
         right: &Box<Expr>,
         statement: &Statement,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         match (&**left, &**right) {
             (Expr::Identifier(column), Expr::Value(literal)) => {
                 self.route_filter_column_with_literal(column.value.as_str(), literal, op)
@@ -50,7 +69,7 @@ impl TableResult {
         column: &str,
         literal: &Value,
         op: &BinaryOperator,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         match op {
             BinaryOperator::Eq => self.filter_column_equals_literal(column, literal),
             BinaryOperator::NotEq => self.filter_column_does_not_equal_literal(column, literal),
@@ -73,7 +92,7 @@ impl TableResult {
         literal: &Value,
         column: &str,
         op: &BinaryOperator,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         match op {
             BinaryOperator::Eq => self.filter_column_equals_literal(column, literal),
             BinaryOperator::NotEq => self.filter_column_does_not_equal_literal(column, literal),
@@ -103,28 +122,30 @@ impl TableResult {
     }
 
     fn filter_column_with_literal<T: Fn(ColumnType, &Type, &Value) -> Result<bool, Error>>(
-        &mut self,
+        &self,
         column: &str,
         literal: &Value,
         filter: T,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         let schema_type = self.get_schema_type_for_column(column);
-        let events = std::mem::replace(&mut self.events, Vec::new());
-        let mut filtered_events = Vec::new();
+        let mut filtered_events = HashSet::new();
 
-        for event in events {
+        for (index, event) in self.events.iter().enumerate() {
             let event_type = event.values.get(column).unwrap();
             let should_keep = filter(schema_type, event_type, literal)?;
             if should_keep {
-                filtered_events.push(event);
+                filtered_events.insert(index);
             }
         }
 
-        self.events = filtered_events;
-        Ok(())
+        Ok(filtered_events)
     }
 
-    fn filter_column_equals_literal(&mut self, column: &str, literal: &Value) -> Result<(), Error> {
+    fn filter_column_equals_literal(
+        &mut self,
+        column: &str,
+        literal: &Value,
+    ) -> Result<HashSet<usize>, Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -166,7 +187,7 @@ impl TableResult {
         &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -208,7 +229,7 @@ impl TableResult {
         &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -249,7 +270,7 @@ impl TableResult {
         &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -290,7 +311,7 @@ impl TableResult {
         &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
@@ -331,7 +352,7 @@ impl TableResult {
         &mut self,
         column: &str,
         literal: &Value,
-    ) -> Result<(), Error> {
+    ) -> Result<HashSet<usize>, Error> {
         self.filter_column_with_literal(column, literal, |schema_type, event_type, literal| match (
             schema_type,
             event_type,
