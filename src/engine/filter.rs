@@ -13,21 +13,9 @@ impl TableResult {
                 return match &query.body {
                     SetExpr::Select(select) => match &select.selection {
                         None => Ok(self),
-                        Some(Expr::BinaryOp { left, op, right }) => match (&**left, &**right) {
-                            (Expr::Identifier(column), Expr::Value(literal)) => self
-                                .route_filter_column_with_literal(
-                                    column.value.as_str(),
-                                    literal,
-                                    op,
-                                ),
-                            (Expr::Value(literal), Expr::Identifier(column)) => self
-                                .route_filter_literal_with_column(
-                                    literal,
-                                    column.value.as_str(),
-                                    op,
-                                ),
-                            _ => Err(Error::InvalidQuery(statement.clone())),
-                        },
+                        Some(Expr::BinaryOp { left, op, right }) => {
+                            self.filter_binary_op(left, op, right, &statement)
+                        }
                         _ => Err(Error::InvalidQuery(statement.clone())),
                     },
                     _ => Err(Error::InvalidQuery(statement.clone())),
@@ -36,6 +24,24 @@ impl TableResult {
         }
 
         Ok(self)
+    }
+
+    fn filter_binary_op(
+        self,
+        left: &Box<Expr>,
+        op: &BinaryOperator,
+        right: &Box<Expr>,
+        statement: &Statement,
+    ) -> Result<TableResult, Error> {
+        match (&**left, &**right) {
+            (Expr::Identifier(column), Expr::Value(literal)) => {
+                self.route_filter_column_with_literal(column.value.as_str(), literal, op)
+            }
+            (Expr::Value(literal), Expr::Identifier(column)) => {
+                self.route_filter_literal_with_column(literal, column.value.as_str(), op)
+            }
+            _ => Err(Error::InvalidQuery(statement.clone())),
+        }
     }
 
     fn route_filter_column_with_literal(
