@@ -5,7 +5,7 @@ use crate::parser::values::Event;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
-use sqlparser::ast::{Expr, Offset, SelectItem, SetExpr, Statement, Value};
+use sqlparser::ast::{Expr, Offset, OrderByExpr, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
 use std::collections::HashMap;
@@ -77,7 +77,36 @@ impl TableResult {
     }
 
     fn process(self) -> Result<TableResult, Error> {
-        self.filter()?.project()?.offset()?.limit()
+        self.filter()?.project()?.order_by()?.offset()?.limit()
+    }
+
+    fn order_by(mut self) -> Result<TableResult, Error> {
+        if let Some(statement) = &self.statement {
+            if let Statement::Query(query) = statement {
+                // for order_by in &query.order_by {
+                //     match &order_by.expr {
+                //         Expr::Identifier(identifier) => {
+                //             self.events.sort_by(|a, b| )
+                //         }
+                //         _ => return Err(Error::InvalidQuery(statement.clone())),
+                //     }
+                // }
+                if query.order_by.len() > 0 {
+                    let order_by: &OrderByExpr = &query.order_by[0];
+                    match &order_by.expr {
+                        Expr::Identifier(identifier) => self.events.sort_by(|a, b| {
+                            let column = identifier.value.as_str();
+                            let a_type = &a.values[column];
+                            let b_type = &b.values[column];
+                            a_type.partial_cmp(b_type).unwrap()
+                        }),
+                        _ => return Err(Error::InvalidQuery(statement.clone())),
+                    }
+                }
+            }
+        }
+
+        Ok(self)
     }
 
     fn offset(mut self) -> Result<TableResult, Error> {
@@ -257,6 +286,22 @@ mod tests {
                 }
             })
             .collect()
+    }
+
+    fn execute_queries(schema: &str, source: &str, queries: &Vec<&str>, events: &Vec<Event>) {
+        for query in queries {
+            execute_query(schema, source, query, events);
+        }
+    }
+
+    fn execute_query(schema: &str, source: &str, query: &str, events: &Vec<Event>) {
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+
+        let engine = Engine::with_query(parser, query.to_string()).unwrap();
+        let table_result = engine.execute(source.lines()).unwrap();
+
+        assert_eq!(&table_result.events, events);
     }
 
     #[test]
@@ -791,5 +836,47 @@ columns:
         );
 
         assert_eq!(table_result.events.len(), 0);
+    }
+
+    #[test]
+    fn sql_order_by() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value
+      type: i32
+";
+        let source = "\
+1\t3
+2\t2
+3\t1
+";
+
+        let queries = vec![
+            "SELECT * FROM logs ORDER BY value",
+            // TODO: "SELECT * FROM logs ORDER BY index DESC",
+        ];
+        let events = generate_typed_events(vec![
+            vec![("index", Type::Int32(3)), ("value", Type::Int32(1))],
+            vec![("index", Type::Int32(2)), ("value", Type::Int32(2))],
+            vec![("index", Type::Int32(1)), ("value", Type::Int32(3))],
+        ]);
+
+        execute_queries(schema, source, &queries, &events);
+
+        let queries = vec![
+            "SELECT * FROM logs ORDER BY index",
+            // TODO: "SELECT * FROM logs ORDER BY value DESC",
+        ];
+        let events = generate_typed_events(vec![
+            vec![("index", Type::Int32(1)), ("value", Type::Int32(3))],
+            vec![("index", Type::Int32(2)), ("value", Type::Int32(2))],
+            vec![("index", Type::Int32(3)), ("value", Type::Int32(1))],
+        ]);
+
+        execute_queries(schema, source, &queries, &events);
     }
 }

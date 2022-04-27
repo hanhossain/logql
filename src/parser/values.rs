@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use serde::Serialize;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, PartialOrd)]
 pub enum Type {
     String(String),
     Int32(i32),
