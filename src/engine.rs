@@ -5,9 +5,10 @@ use crate::parser::values::Event;
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
-use sqlparser::ast::{Expr, Offset, OrderByExpr, SelectItem, SetExpr, Statement, Value};
+use sqlparser::ast::{Expr, Offset, SelectItem, SetExpr, Statement, Value};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::str::{FromStr, Lines};
 
@@ -83,25 +84,32 @@ impl TableResult {
     fn order_by(mut self) -> Result<TableResult, Error> {
         if let Some(statement) = &self.statement {
             if let Statement::Query(query) = statement {
-                // for order_by in &query.order_by {
-                //     match &order_by.expr {
-                //         Expr::Identifier(identifier) => {
-                //             self.events.sort_by(|a, b| )
-                //         }
-                //         _ => return Err(Error::InvalidQuery(statement.clone())),
-                //     }
-                // }
                 if query.order_by.len() > 0 {
-                    let order_by: &OrderByExpr = &query.order_by[0];
-                    match &order_by.expr {
-                        Expr::Identifier(identifier) => self.events.sort_by(|a, b| {
-                            let column = identifier.value.as_str();
-                            let a_type = &a.values[column];
-                            let b_type = &b.values[column];
-                            a_type.partial_cmp(b_type).unwrap()
-                        }),
-                        _ => return Err(Error::InvalidQuery(statement.clone())),
-                    }
+                    self.events.sort_by(|a, b| {
+                        let mut result = Ordering::Equal;
+                        for order_by in &query.order_by {
+                            result = match &order_by.expr {
+                                Expr::Identifier(identifier) => {
+                                    let column = identifier.value.as_str();
+                                    let a_type = &a.values[column];
+                                    let b_type = &b.values[column];
+                                    let (left, right) = if order_by.asc.unwrap_or(true) {
+                                        (a_type, b_type)
+                                    } else {
+                                        (b_type, a_type)
+                                    };
+                                    left.partial_cmp(right).unwrap()
+                                }
+                                _ => panic!("{:?}", statement),
+                            };
+
+                            if result != Ordering::Equal {
+                                break;
+                            }
+                        }
+
+                        result
+                    });
                 }
             }
         }
@@ -286,12 +294,6 @@ mod tests {
                 }
             })
             .collect()
-    }
-
-    fn execute_queries(schema: &str, source: &str, queries: &Vec<&str>, events: &Vec<Event>) {
-        for query in queries {
-            execute_query(schema, source, query, events);
-        }
     }
 
     fn execute_query(schema: &str, source: &str, query: &str, events: &Vec<Event>) {
@@ -839,7 +841,7 @@ columns:
     }
 
     #[test]
-    fn sql_order_by() {
+    fn sql_order_by_implicit_ascending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value>.+)
 table: logs
@@ -855,28 +857,223 @@ columns:
 3\t1
 ";
 
-        let queries = vec![
-            "SELECT * FROM logs ORDER BY value",
-            // TODO: "SELECT * FROM logs ORDER BY index DESC",
-        ];
+        let query = "SELECT * FROM logs ORDER BY value";
         let events = generate_typed_events(vec![
             vec![("index", Type::Int32(3)), ("value", Type::Int32(1))],
             vec![("index", Type::Int32(2)), ("value", Type::Int32(2))],
             vec![("index", Type::Int32(1)), ("value", Type::Int32(3))],
         ]);
 
-        execute_queries(schema, source, &queries, &events);
+        execute_query(schema, source, query, &events);
+    }
 
-        let queries = vec![
-            "SELECT * FROM logs ORDER BY index",
-            // TODO: "SELECT * FROM logs ORDER BY value DESC",
-        ];
+    #[test]
+    fn sql_order_by_explicit_ascending() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value
+      type: i32
+";
+        let source = "\
+1\t3
+2\t2
+3\t1
+";
+
+        let query = "SELECT * FROM logs ORDER BY value ASC";
         let events = generate_typed_events(vec![
-            vec![("index", Type::Int32(1)), ("value", Type::Int32(3))],
-            vec![("index", Type::Int32(2)), ("value", Type::Int32(2))],
             vec![("index", Type::Int32(3)), ("value", Type::Int32(1))],
+            vec![("index", Type::Int32(2)), ("value", Type::Int32(2))],
+            vec![("index", Type::Int32(1)), ("value", Type::Int32(3))],
         ]);
 
-        execute_queries(schema, source, &queries, &events);
+        execute_query(schema, source, query, &events);
+    }
+
+    #[test]
+    fn sql_order_by_explicit_descending() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value
+      type: i32
+";
+        let source = "\
+1\t3
+2\t2
+3\t1
+";
+
+        let query = "SELECT * FROM logs ORDER BY index DESC";
+        let events = generate_typed_events(vec![
+            vec![("index", Type::Int32(3)), ("value", Type::Int32(1))],
+            vec![("index", Type::Int32(2)), ("value", Type::Int32(2))],
+            vec![("index", Type::Int32(1)), ("value", Type::Int32(3))],
+        ]);
+
+        execute_query(schema, source, query, &events);
+    }
+
+    #[test]
+    fn sql_order_by_multiple_columns_implicit_ascending() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value1
+      type: i32
+    - name: value2
+      type: i32
+";
+        let source = "\
+1\t1\t2
+2\t2\t0
+3\t1\t1
+";
+        let query = "select * from logs order by value1, value2";
+        let events = generate_typed_events(vec![
+            vec![
+                ("index", 3.into()),
+                ("value1", 1.into()),
+                ("value2", 1.into()),
+            ],
+            vec![
+                ("index", 1.into()),
+                ("value1", 1.into()),
+                ("value2", 2.into()),
+            ],
+            vec![
+                ("index", 2.into()),
+                ("value1", 2.into()),
+                ("value2", 0.into()),
+            ],
+        ]);
+        execute_query(schema, source, query, &events);
+    }
+
+    #[test]
+    fn sql_order_by_multiple_columns_explicit_ascending() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value1
+      type: i32
+    - name: value2
+      type: i32
+";
+        let source = "\
+1\t1\t2
+2\t2\t0
+3\t1\t1
+";
+        let query = "select * from logs order by value1 asc, value2 asc";
+        let events = generate_typed_events(vec![
+            vec![
+                ("index", 3.into()),
+                ("value1", 1.into()),
+                ("value2", 1.into()),
+            ],
+            vec![
+                ("index", 1.into()),
+                ("value1", 1.into()),
+                ("value2", 2.into()),
+            ],
+            vec![
+                ("index", 2.into()),
+                ("value1", 2.into()),
+                ("value2", 0.into()),
+            ],
+        ]);
+        execute_query(schema, source, query, &events);
+    }
+
+    #[test]
+    fn sql_order_by_multiple_columns_explicit_descending() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value1
+      type: i32
+    - name: value2
+      type: i32
+";
+        let source = "\
+1\t1\t2
+2\t2\t0
+3\t1\t1
+";
+        let query = "select * from logs order by value1 desc, value2 desc";
+        let events = generate_typed_events(vec![
+            vec![
+                ("index", 2.into()),
+                ("value1", 2.into()),
+                ("value2", 0.into()),
+            ],
+            vec![
+                ("index", 1.into()),
+                ("value1", 1.into()),
+                ("value2", 2.into()),
+            ],
+            vec![
+                ("index", 3.into()),
+                ("value1", 1.into()),
+                ("value2", 1.into()),
+            ],
+        ]);
+        execute_query(schema, source, query, &events);
+    }
+
+    #[test]
+    fn sql_order_by_multiple_columns_explicit_ascending_and_descending() {
+        let schema = "\
+regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+table: logs
+columns:
+    - name: index
+      type: i32
+    - name: value1
+      type: i32
+    - name: value2
+      type: i32
+";
+        let source = "\
+1\t1\t2
+2\t2\t0
+3\t1\t1
+";
+        let query = "select * from logs order by value1 asc, value2 desc";
+        let events = generate_typed_events(vec![
+            vec![
+                ("index", 1.into()),
+                ("value1", 1.into()),
+                ("value2", 2.into()),
+            ],
+            vec![
+                ("index", 3.into()),
+                ("value1", 1.into()),
+                ("value2", 1.into()),
+            ],
+            vec![
+                ("index", 2.into()),
+                ("value1", 2.into()),
+                ("value2", 0.into()),
+            ],
+        ]);
+        execute_query(schema, source, query, &events);
     }
 }
