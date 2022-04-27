@@ -27,42 +27,49 @@ impl ToString for Type {
     }
 }
 
+#[cfg(test)]
 impl From<&str> for Type {
     fn from(value: &str) -> Self {
         Type::String(value.to_string())
     }
 }
 
+#[cfg(test)]
 impl From<i32> for Type {
     fn from(value: i32) -> Self {
         Type::Int32(value)
     }
 }
 
+#[cfg(test)]
 impl From<i64> for Type {
     fn from(value: i64) -> Self {
         Type::Int64(value)
     }
 }
 
+#[cfg(test)]
 impl From<bool> for Type {
     fn from(value: bool) -> Self {
         Type::Bool(value)
     }
 }
 
+#[cfg(test)]
 impl From<f32> for Type {
     fn from(value: f32) -> Self {
         Type::Float(value)
     }
 }
 
+#[cfg(test)]
 impl From<f64> for Type {
     fn from(value: f64) -> Self {
         Type::Double(value)
     }
 }
 
+#[cfg(test)]
 impl From<DateTime<Utc>> for Type {
     fn from(value: DateTime<Utc>) -> Self {
         Type::DateTime(value)
