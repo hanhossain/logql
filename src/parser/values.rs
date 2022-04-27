@@ -27,6 +27,48 @@ impl ToString for Type {
     }
 }
 
+impl From<&str> for Type {
+    fn from(value: &str) -> Self {
+        Type::String(value.to_string())
+    }
+}
+
+impl From<i32> for Type {
+    fn from(value: i32) -> Self {
+        Type::Int32(value)
+    }
+}
+
+impl From<i64> for Type {
+    fn from(value: i64) -> Self {
+        Type::Int64(value)
+    }
+}
+
+impl From<bool> for Type {
+    fn from(value: bool) -> Self {
+        Type::Bool(value)
+    }
+}
+
+impl From<f32> for Type {
+    fn from(value: f32) -> Self {
+        Type::Float(value)
+    }
+}
+
+impl From<f64> for Type {
+    fn from(value: f64) -> Self {
+        Type::Double(value)
+    }
+}
+
+impl From<DateTime<Utc>> for Type {
+    fn from(value: DateTime<Utc>) -> Self {
+        Type::DateTime(value)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct Event {
     pub values: HashMap<String, Type>,
