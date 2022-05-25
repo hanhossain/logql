@@ -1,7 +1,7 @@
 mod filter;
 
 use crate::error::Error;
-use crate::parser::values::Event;
+use crate::parser::values::{Event, Type};
 use crate::parser::Parser;
 use comfy_table::{presets, ContentArrangement, Table};
 use serde::Serialize;
@@ -78,7 +78,12 @@ impl TableResult {
     }
 
     fn process(self) -> Result<TableResult, Error> {
-        self.filter()?.project()?.order_by()?.offset()?.limit()
+        self.handle_extra_text()
+            .filter()?
+            .project()?
+            .order_by()?
+            .offset()?
+            .limit()
     }
 
     fn order_by(mut self) -> Result<TableResult, Error> {
@@ -158,6 +163,26 @@ impl TableResult {
         Ok(self)
     }
 
+    fn handle_extra_text(mut self) -> TableResult {
+        if let Some(multiline_column) = &self.parser.multiline_column {
+            for event in &mut self.events {
+                if let Some(extra_text) = event.extra_text.take() {
+                    match event.values.get_mut(multiline_column) {
+                        Some(Type::String(value)) => {
+                            for line in extra_text {
+                                value.push('\n');
+                                value.push_str(line.as_str());
+                            }
+                        }
+                        _ => panic!("Multiline is only valid on string types"),
+                    }
+                }
+            }
+        }
+
+        self
+    }
+
     fn project(mut self) -> Result<TableResult, Error> {
         if let Some(statement) = &self.statement {
             if let Statement::Query(query) = statement {
@@ -228,35 +253,13 @@ impl TableResult {
     }
 
     fn populate_table(&self, table: &mut Table) {
-        let multiline_index = self
-            .parser
-            .multiline_column
-            .as_ref()
-            .map(|c| c.as_str())
-            .map(|multiline_column| {
-                self.columns
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, c)| c.as_str() == multiline_column)
-                    .map(|(idx, _)| idx)
-                    .next()
-            });
         for event in &self.events {
-            let mut result: Vec<_> = self
+            let result: Vec<_> = self
                 .columns
                 .iter()
                 .map(|c| &event.values[c])
                 .map(|t| t.to_string())
                 .collect();
-            if let Some(extra_text) = &event.extra_text {
-                if let Some(Some(multiline_index)) = multiline_index {
-                    for text in extra_text {
-                        let multiline_column = &mut result[multiline_index];
-                        multiline_column.push('\n');
-                        multiline_column.push_str(text);
-                    }
-                }
-            }
             table.add_row(result);
         }
     }

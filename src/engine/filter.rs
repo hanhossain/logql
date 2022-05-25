@@ -984,4 +984,48 @@ columns:
             assert_eq!(table_result.events, events);
         }
     }
+
+    #[test]
+    fn sql_where_multiline_uses_all_lines() {
+        let schema = "\
+regex: (?P<i32>.+)\t(?P<string>.+)
+table: logs
+columns:
+    - name: i32
+      type: i32
+    - name: string
+      type: string
+      multiline: true
+";
+        let source = "\
+1\thello world
+2\thello world
+multi-line
+3\thello world";
+
+        let schema = Schema::try_from(schema).unwrap();
+        let parser = Parser::new(schema).unwrap();
+        let queries = vec![
+            "select * from logs where string = 'hello world'",
+            "select * from logs where 'hello world' = string",
+        ];
+
+        for query in queries {
+            let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
+            let table_result = engine.execute(source.lines()).unwrap();
+
+            let events = generate_typed_events(vec![
+                vec![
+                    ("i32", Type::Int32(1)),
+                    ("string", Type::String("hello world".to_string())),
+                ],
+                vec![
+                    ("i32", Type::Int32(3)),
+                    ("string", Type::String("hello world".to_string())),
+                ],
+            ]);
+
+            assert_eq!(table_result.events, events);
+        }
+    }
 }
