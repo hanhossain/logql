@@ -6,7 +6,7 @@ use crate::schema::{ColumnType, Schema};
 use chrono::prelude::*;
 use regex::Regex;
 use std::collections::HashSet;
-use std::str::{FromStr, Lines};
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct Parser {
@@ -37,17 +37,21 @@ impl Parser {
     }
 
     /// Parse all lines
-    pub fn parse<'a>(&'a self, lines: Lines<'a>) -> Vec<Event> {
+    pub fn parse<'a, T, I>(&self, lines: T) -> Vec<Event>
+    where
+        I: AsRef<str>,
+        T: Iterator<Item = I>,
+    {
         let mut parsed = Vec::new();
         for line in lines {
-            if let Some(matched_result) = self.parse_line(line) {
+            if let Some(matched_result) = self.parse_line(line.as_ref()) {
                 parsed.push(matched_result);
             } else if self.multiline_column.is_some() {
                 // attempt to get extra lines only if multiline is enabled
                 if let Some(last) = parsed.last_mut() {
                     match last.extra_text.as_mut() {
-                        None => last.extra_text = Some(vec![line.to_string()]),
-                        Some(extra_text) => extra_text.push(line.to_string()),
+                        None => last.extra_text = Some(vec![line.as_ref().to_string()]),
+                        Some(extra_text) => extra_text.push(line.as_ref().to_string()),
                     }
                 }
             }

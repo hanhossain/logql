@@ -10,7 +10,7 @@ use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser as SqlParser;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::str::{FromStr, Lines};
+use std::str::FromStr;
 
 pub struct Engine {
     parser: Parser,
@@ -48,7 +48,11 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn execute<'a>(&'a self, lines: Lines<'a>) -> Result<TableResult, Error> {
+    pub fn execute<'a, T, I>(&'a self, lines: T) -> Result<TableResult, Error>
+    where
+        I: AsRef<str>,
+        T: Iterator<Item = I>,
+    {
         let events = self.parser.parse(lines);
         let table_result = TableResult {
             columns: self.columns.clone(),
