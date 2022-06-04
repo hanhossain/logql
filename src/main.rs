@@ -25,7 +25,9 @@ struct Config {
     json_headers: bool,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> color_eyre::eyre::Result<()> {
+    color_eyre::install()?;
+
     let config: Config = Config::parse();
     let schema = std::fs::read_to_string(&config.schema)?;
 
