@@ -1,6 +1,7 @@
 use crate::engine::Engine;
 use crate::parser::Parser;
 use clap::Parser as ClapParser;
+use regex::Regex;
 use std::fmt::Display;
 use walkdir::WalkDir;
 
@@ -32,6 +33,7 @@ fn main() -> color_eyre::eyre::Result<()> {
     let schema = std::fs::read_to_string(&config.schema)?;
 
     let parser = Parser::try_from(schema.as_str())?;
+    let filename_regex = Regex::new(&parser.schema.filename)?;
     let engine = match &config.sql {
         Some(s) => Engine::with_query(parser, s.clone()),
         None => Ok(Engine::new(parser)),
@@ -48,7 +50,12 @@ fn main() -> color_eyre::eyre::Result<()> {
             if let Ok(entry) = entry {
                 let metadata = entry.metadata()?;
                 if metadata.is_file() {
-                    files.push(std::fs::read_to_string(entry.into_path())?);
+                    let path = entry.into_path();
+                    if let Some(filename) = path.file_name() {
+                        if filename_regex.is_match(filename.to_str().unwrap()) {
+                            files.push(std::fs::read_to_string(path)?);
+                        }
+                    }
                 }
             }
         }

@@ -417,6 +417,7 @@ regex: (?P<col1>.+)\
     \t(?P<col5>.+)\
     \t(?P<col6>.+)\
     \t(?P<col7>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -495,6 +496,7 @@ regex: (?P<i32>.+)\
     \t(?P<f64>.+)\
     \t(?P<datetime>.+)\
     \t(?P<bool>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -574,6 +576,7 @@ columns:
     fn sql_where_column_less_than_literal() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)\t(?P<i64>.+)\t(?P<f32>.+)\t(?P<f64>.+)\t(?P<datetime>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -637,6 +640,7 @@ columns:
     fn sql_where_column_less_than_or_equal_to_literal() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)\t(?P<i64>.+)\t(?P<f32>.+)\t(?P<f64>.+)\t(?P<datetime>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -713,6 +717,7 @@ columns:
     fn sql_where_column_greater_than_literal() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)\t(?P<i64>.+)\t(?P<f32>.+)\t(?P<f64>.+)\t(?P<datetime>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -776,6 +781,7 @@ columns:
     fn sql_where_column_greater_than_or_equal_to_literal() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)\t(?P<i64>.+)\t(?P<f32>.+)\t(?P<f64>.+)\t(?P<datetime>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -852,6 +858,7 @@ columns:
     fn sql_where_multiple_clauses_has_and() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -884,6 +891,7 @@ columns:
     fn sql_where_multiple_clauses_has_or() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -922,6 +930,7 @@ columns:
     fn sql_where_nested() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)\t(?P<i64>.+)\t(?P<f32>.+)\t(?P<f64>.+)\t(?P<datetime>.+)
+filename: .*
 table: logs
 columns:
     - name: i32
@@ -989,6 +998,7 @@ columns:
     fn sql_where_multiline_uses_all_lines() {
         let schema = "\
 regex: (?P<i32>.+)\t(?P<string>.+)
+filename: .*
 table: logs
 columns:
     - name: i32

@@ -313,6 +313,7 @@ mod tests {
     fn create_engine() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -336,6 +337,7 @@ columns:
     fn create_with_broken_sql() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -360,6 +362,7 @@ columns:
     fn create_with_empty_query() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -383,6 +386,7 @@ columns:
     fn sql_projection_wildcard() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -418,6 +422,7 @@ columns:
     fn sql_projection_identifier_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -455,6 +460,7 @@ columns:
     fn sql_projection_identifier_subset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -492,6 +498,7 @@ columns:
     fn sql_projection_alias_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -533,6 +540,7 @@ columns:
     fn sql_projection_alias_subset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)\t(?P<col3>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -570,6 +578,7 @@ columns:
     fn sql_limit_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -607,6 +616,7 @@ columns:
     fn sql_limit_subset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -643,6 +653,7 @@ columns:
     fn sql_limit_greater_than_count() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -680,6 +691,7 @@ columns:
     fn sql_offset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -716,6 +728,7 @@ columns:
     fn sql_offset_greater_than_count() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -745,6 +758,7 @@ columns:
     fn sql_limit_offset_all() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -782,6 +796,7 @@ columns:
     fn sql_limit_offset_subset() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -818,6 +833,7 @@ columns:
     fn sql_limit_offset_greater_than_count() {
         let schema = "\
 regex: (?P<col1>.+)\t(?P<col2>.+)
+filename: .*
 table: logs
 columns:
     - name: col1
@@ -847,6 +863,7 @@ columns:
     fn sql_order_by_implicit_ascending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value>.+)
+filename: .*
 table: logs
 columns:
     - name: index
@@ -874,6 +891,7 @@ columns:
     fn sql_order_by_explicit_ascending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value>.+)
+filename: .*
 table: logs
 columns:
     - name: index
@@ -901,6 +919,7 @@ columns:
     fn sql_order_by_explicit_descending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value>.+)
+filename: .*
 table: logs
 columns:
     - name: index
@@ -928,6 +947,7 @@ columns:
     fn sql_order_by_multiple_columns_implicit_ascending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+filename: .*
 table: logs
 columns:
     - name: index
@@ -967,6 +987,7 @@ columns:
     fn sql_order_by_multiple_columns_explicit_ascending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+filename: .*
 table: logs
 columns:
     - name: index
@@ -1006,6 +1027,7 @@ columns:
     fn sql_order_by_multiple_columns_explicit_descending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+filename: .*
 table: logs
 columns:
     - name: index
@@ -1045,6 +1067,7 @@ columns:
     fn sql_order_by_multiple_columns_explicit_ascending_and_descending() {
         let schema = "\
 regex: (?P<index>.+)\t(?P<value1>.+)\t(?P<value2>.+)
+filename: .*
 table: logs
 columns:
     - name: index

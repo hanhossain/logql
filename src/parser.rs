@@ -129,6 +129,7 @@ mod tests {
     fn create_parser() {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            filename: ".*".to_string(),
             table: "log".to_string(),
             columns: vec![
                 Column::new("index", ColumnType::String),
@@ -144,6 +145,7 @@ mod tests {
     fn verify_columns_exist() {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            filename: ".*".to_string(),
             table: "log".to_string(),
             columns: vec![
                 Column::new("index", ColumnType::String),
@@ -167,6 +169,7 @@ mod tests {
             (?P<float_value>\\d+\\.\\d+)\\t\
             (?P<timestamp>.+)"
                 .to_string(),
+            filename: ".*".to_string(),
             table: "log".to_string(),
             columns: vec![
                 Column::new("int_value", ColumnType::Int32),
@@ -218,6 +221,7 @@ mod tests {
     fn parse_into_columns_no_match() {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            filename: ".*".to_string(),
             table: "log".to_string(),
             columns: vec![
                 Column::new("index", ColumnType::String),
@@ -236,6 +240,7 @@ mod tests {
     fn parse_lines_with_multiline_enabled() {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            filename: ".*".to_string(),
             table: "log".to_string(),
             columns: vec![
                 Column::new("index", ColumnType::Int32),
@@ -271,6 +276,7 @@ mod tests {
     fn parse_lines_with_multiline_disabled() {
         let schema = Schema {
             regex: r"(?P<index>\d+)\t(?P<string_value>.+)\t(?P<double_value>\d+\.\d+)".to_string(),
+            filename: ".*".to_string(),
             table: "log".to_string(),
             columns: vec![
                 Column::new("index", ColumnType::Int32),
