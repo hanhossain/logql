@@ -48,11 +48,7 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn execute<'a, T, I>(&'a self, lines: T) -> Result<TableResult, Error>
-    where
-        I: AsRef<str>,
-        T: Iterator<Item = I>,
-    {
+    pub fn execute<T: AsRef<str>>(&self, lines: Vec<T>) -> Result<TableResult, Error> {
         let events = self.parser.parse(lines);
         let table_result = TableResult {
             columns: self.columns.clone(),
@@ -308,7 +304,7 @@ mod tests {
         let parser = Parser::new(schema).unwrap();
 
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
 
         assert_eq!(&table_result.events, events);
     }
@@ -402,7 +398,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -439,7 +435,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1, col2, col3 FROM table1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string(), "col3".to_string()]
@@ -476,7 +472,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1, col3 FROM table1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col3".to_string()]
@@ -513,7 +509,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1 as column1, col2 as column2, col3 as column3 FROM table1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec![
@@ -554,7 +550,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT col1 as column1, col3 as column3 FROM table1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["column1".to_string(), "column3".to_string()]
@@ -590,7 +586,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 LIMIT 3";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -627,7 +623,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 LIMIT 2";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -663,7 +659,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 LIMIT 4";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -700,7 +696,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 OFFSET 1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -736,7 +732,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 OFFSET 4";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -765,7 +761,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 LIMIT 3 OFFSET 0";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -802,7 +798,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 LIMIT 2 OFFSET 1";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]
@@ -838,7 +834,7 @@ columns:
         let parser = Parser::new(schema).unwrap();
         let query = "SELECT * FROM table1 LIMIT 2 OFFSET 3";
         let engine = Engine::with_query(parser, query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
         assert_eq!(
             table_result.columns,
             vec!["col1".to_string(), "col2".to_string()]

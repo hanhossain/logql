@@ -478,7 +478,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.columns, columns);
             assert_eq!(table_result.events, events);
@@ -564,7 +564,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.events, events);
         }
@@ -627,7 +627,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.events, events);
         }
@@ -703,7 +703,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.events, events);
         }
@@ -766,7 +766,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.events, events);
         }
@@ -842,7 +842,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.events, events);
         }
@@ -875,7 +875,7 @@ columns:
 
         let query = "select * from logs where i32 = 1 and string = 'a'";
         let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
 
         assert_eq!(table_result.events, events);
     }
@@ -913,7 +913,7 @@ columns:
 
         let query = "select * from logs where i32 = 1 or string = 'b'";
         let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-        let table_result = engine.execute(source.lines()).unwrap();
+        let table_result = engine.execute(vec![source]).unwrap();
 
         assert_eq!(table_result.events, events);
     }
@@ -979,7 +979,7 @@ columns:
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             assert_eq!(table_result.events, events);
         }
@@ -1012,7 +1012,7 @@ multi-line
 
         for query in queries {
             let engine = Engine::with_query(parser.clone(), query.to_string()).unwrap();
-            let table_result = engine.execute(source.lines()).unwrap();
+            let table_result = engine.execute(vec![source]).unwrap();
 
             let events = generate_typed_events(vec![
                 vec![

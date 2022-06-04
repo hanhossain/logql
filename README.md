@@ -1,7 +1,6 @@
 # logql
 
 TODO:
-- fix corruption issue when log file does not end with an empty line
 - add schema setting for datetime display type (utc or local)
 - add `GROUP BY` and `HAVING` support
 - support nested queries

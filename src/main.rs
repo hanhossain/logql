@@ -2,7 +2,6 @@ use crate::engine::Engine;
 use crate::parser::Parser;
 use clap::Parser as ClapParser;
 use std::fmt::Display;
-use std::io::{BufRead, BufReader, Read};
 use walkdir::WalkDir;
 
 mod engine;
@@ -38,43 +37,23 @@ fn main() -> anyhow::Result<()> {
 
     let metadata = std::fs::metadata(&config.source)?;
 
-    let reader: Box<dyn BufRead> = if metadata.is_file() {
-        let file = std::fs::File::open(&config.source)?;
-        Box::new(BufReader::new(file))
+    let files = if metadata.is_file() {
+        let raw = std::fs::read_to_string(&config.source)?;
+        vec![raw]
     } else {
         let mut files = Vec::new();
         for entry in WalkDir::new(&config.source) {
             if let Ok(entry) = entry {
                 let metadata = entry.metadata()?;
                 if metadata.is_file() {
-                    files.push(entry);
+                    files.push(std::fs::read_to_string(entry.into_path())?);
                 }
             }
         }
-
-        let mut file_iter = files.into_iter();
-
-        let file1 = file_iter.next().expect("at least one file");
-        let file1 = std::fs::File::open(file1.into_path())?;
-        let reader1 = BufReader::new(file1);
-
-        if let Some(file2) = file_iter.next() {
-            let file2 = std::fs::File::open(file2.into_path())?;
-            let mut combo_reader: Box<dyn BufRead> = Box::new(reader1.chain(BufReader::new(file2)));
-
-            for file in file_iter {
-                let file = std::fs::File::open(file.into_path())?;
-                let reader = BufReader::new(file);
-                combo_reader = Box::new(combo_reader.chain(reader));
-            }
-
-            Box::new(combo_reader)
-        } else {
-            Box::new(reader1)
-        }
+        files
     };
 
-    let table_result = engine.execute(reader.lines().filter_map(|l| l.ok()))?;
+    let table_result = engine.execute(files)?;
     if !config.no_print {
         let output: Box<dyn Display> = match &config {
             Config { json: true, .. } => {

@@ -37,21 +37,19 @@ impl Parser {
     }
 
     /// Parse all lines
-    pub fn parse<'a, T, I>(&self, lines: T) -> Vec<Event>
-    where
-        I: AsRef<str>,
-        T: Iterator<Item = I>,
-    {
+    pub fn parse<T: AsRef<str>>(&self, chunks: Vec<T>) -> Vec<Event> {
         let mut parsed = Vec::new();
-        for line in lines {
-            if let Some(matched_result) = self.parse_line(line.as_ref()) {
-                parsed.push(matched_result);
-            } else if self.multiline_column.is_some() {
-                // attempt to get extra lines only if multiline is enabled
-                if let Some(last) = parsed.last_mut() {
-                    match last.extra_text.as_mut() {
-                        None => last.extra_text = Some(vec![line.as_ref().to_string()]),
-                        Some(extra_text) => extra_text.push(line.as_ref().to_string()),
+        for chunk in chunks {
+            for line in chunk.as_ref().lines() {
+                if let Some(matched_result) = self.parse_line(line) {
+                    parsed.push(matched_result);
+                } else if self.multiline_column.is_some() {
+                    // attempt to get extra lines only if multiline is enabled
+                    if let Some(last) = parsed.last_mut() {
+                        match last.extra_text.as_mut() {
+                            None => last.extra_text = Some(vec![line.to_string()]),
+                            Some(extra_text) => extra_text.push(line.to_string()),
+                        }
                     }
                 }
             }
@@ -248,7 +246,7 @@ mod tests {
 
         let line = "1234\tthis is some string\t3.14159\nthis is extra text";
         let parser = Parser::new(schema).unwrap();
-        let parsed_result = parser.parse(line.lines());
+        let parsed_result = parser.parse(vec![line]);
 
         let mut expected_values = HashMap::new();
         expected_values.insert("index".to_string(), Type::Int32(1234));
@@ -283,7 +281,7 @@ mod tests {
 
         let line = "1234\tthis is some string\t3.14159\nthis is extra text";
         let parser = Parser::new(schema).unwrap();
-        let parsed_result = parser.parse(line.lines());
+        let parsed_result = parser.parse(vec![line]);
 
         let mut expected_values = HashMap::new();
         expected_values.insert("index".to_string(), Type::Int32(1234));
