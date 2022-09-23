@@ -13,7 +13,7 @@ Supported features:
     - not equals `!=` and `<>`
     - less than `<`
     - greater than `>`
-    - less than or equal to `>=`
+    - less than or equal to `<=`
     - greater than or equal to `>=`
   - multiple clauses
     - and
